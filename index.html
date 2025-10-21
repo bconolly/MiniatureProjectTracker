@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miniature Painting Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Miniature Painting Tracker</h1>
+            <div class="header-actions">
+                <button id="manage-templates-btn" class="btn btn-secondary">Manage Templates</button>
+                <button id="new-project-btn" class="btn btn-primary">New Project</button>
+            </div>
+        </header>
+
+        <main>
+            <div id="projects-grid" class="projects-grid">
+                <!-- Projects will be dynamically loaded here -->
+            </div>
+        </main>
+
+        <!-- New Project Modal -->
+        <div id="project-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modal-title">New Project</h2>
+                <form id="project-form">
+                    <input type="hidden" id="project-id">
+
+                    <div class="form-group">
+                        <label for="project-name">Project Name:</label>
+                        <input type="text" id="project-name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-description">Description:</label>
+                        <textarea id="project-description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-photo">Project Photo:</label>
+                        <input type="file" id="project-photo" accept="image/*">
+                        <div id="photo-preview"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paint-recipe">Paint Recipe:</label>
+                        <textarea id="paint-recipe" rows="4"
+                            placeholder="List your paints, techniques, and color schemes..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-notes">Notes:</label>
+                        <textarea id="project-notes" rows="3"
+                            placeholder="Progress updates, time spent, observations..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recipe Template Modal -->
+        <div id="template-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Save Recipe Template</h2>
+                <form id="template-form">
+                    <div class="form-group">
+                        <label for="template-name">Template Name:</label>
+                        <input type="text" id="template-name" required
+                            placeholder="e.g., Space Marine, Orc Warrior, etc.">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-recipe">Recipe:</label>
+                        <textarea id="template-recipe" rows="8" readonly></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-template-btn" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Template</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Manage Templates Modal -->
+        <div id="manage-templates-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Manage Recipe Templates</h2>
+                <div id="templates-list">
+                    <!-- Templates will be loaded here -->
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="close-templates-btn" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Miniature Modal -->
+        <div id="miniature-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="mini-modal-title">Add Miniature</h2>
+                <form id="miniature-form">
+                    <input type="hidden" id="mini-project-id">
+                    <input type="hidden" id="mini-id">
+
+                    <div class="form-group">
+                        <label for="mini-name">Miniature Name:</label>
+                        <input type="text" id="mini-name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mini-stage">Progress Stage:</label>
+                        <select id="mini-stage">
+                            <option value="unpainted">Unpainted</option>
+                            <option value="primed">Primed</option>
+                            <option value="basecoated">Basecoated</option>
+                            <option value="detailed">Detailed</option>
+                            <option value="finished">Finished</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mini-photo">Photo:</label>
+                        <input type="file" id="mini-photo" accept="image/*">
+                        <div id="mini-photo-preview"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mini-recipe">Paint Recipe:</label>
+                        <div class="recipe-controls">
+                            <select id="recipe-template" style="margin-bottom: 10px;">
+                                <option value="">Choose a template...</option>
+                            </select>
+                            <button type="button" id="apply-template-btn" class="btn btn-small btn-secondary">Apply
+                                Template</button>
+                            <button type="button" id="save-template-btn" class="btn btn-small btn-secondary">Save as
+                                Template</button>
+                        </div>
+                        <textarea id="mini-recipe" rows="6"
+                            placeholder="Base colors:&#10;- Primer: Chaos Black&#10;- Skin: Cadian Fleshtone&#10;- Armor: Macragge Blue&#10;&#10;Highlights:&#10;- Skin: Kislev Flesh&#10;- Armor: Calgar Blue"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mini-notes">Notes:</label>
+                        <textarea id="mini-notes" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="cancel-mini-btn" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Miniature</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
