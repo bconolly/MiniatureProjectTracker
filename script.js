@@ -1,5 +1,23 @@
+/**
+ * Miniature Painting Tracker
+ *
+ * Security Features:
+ * - HTML escaping for all user-generated text content to prevent XSS
+ * - Data URL validation for all images to prevent malicious content injection
+ * - Event delegation instead of inline event handlers
+ * - Input validation for file types, sizes, and text lengths
+ * - Content Security Policy enforced via meta tag
+ * - IIFE wrapper to prevent global namespace pollution
+ */
+
 class MiniatureTracker {
     constructor() {
+        // Constants
+        this.MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+        this.MAX_NAME_LENGTH = 100;
+        this.MAX_TEMPLATE_NAME_LENGTH = 50;
+        this.ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
         try {
             this.projects = JSON.parse(localStorage.getItem('miniature-projects') || '[]');
             this.templates = JSON.parse(localStorage.getItem('recipe-templates') || '[]');
@@ -62,6 +80,54 @@ class MiniatureTracker {
                 e.target.style.display = 'none';
             }
         });
+
+        // Event delegation for dynamically created buttons
+        document.getElementById('projects-grid').addEventListener('click', (e) => {
+            const target = e.target;
+
+            // Edit project button
+            if (target.classList.contains('edit-project-btn')) {
+                const projectId = target.dataset.projectId;
+                this.openProjectModal(projectId);
+            }
+
+            // Delete project button
+            if (target.classList.contains('delete-project-btn')) {
+                const projectId = target.dataset.projectId;
+                this.deleteProject(projectId);
+            }
+
+            // Add miniature button
+            if (target.classList.contains('add-mini-btn')) {
+                const projectId = target.dataset.projectId;
+                this.openMiniatureModal(projectId);
+            }
+
+            // Edit miniature button
+            if (target.classList.contains('edit-mini-btn')) {
+                const projectId = target.dataset.projectId;
+                const miniId = target.dataset.miniId;
+                this.openMiniatureModal(projectId, miniId);
+            }
+
+            // Delete miniature button
+            if (target.classList.contains('delete-mini-btn')) {
+                const projectId = target.dataset.projectId;
+                const miniId = target.dataset.miniId;
+                this.deleteMiniature(projectId, miniId);
+            }
+        });
+
+        // Event delegation for template management
+        document.getElementById('templates-list').addEventListener('click', (e) => {
+            const target = e.target;
+
+            // Delete template button
+            if (target.classList.contains('delete-template-btn')) {
+                const templateId = target.dataset.templateId;
+                this.deleteTemplate(templateId);
+            }
+        });
     }
 
     generateId() {
@@ -70,9 +136,39 @@ class MiniatureTracker {
 
     // Security: Escape HTML to prevent XSS
     escapeHtml(text) {
+        if (text === null || text === undefined) return '';
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = String(text);
         return div.innerHTML;
+    }
+
+    // Security: Validate data URL to ensure it's a safe image
+    validateDataUrl(dataUrl) {
+        if (!dataUrl || typeof dataUrl !== 'string') {
+            return false;
+        }
+
+        // Check if it's a valid data URL format
+        const dataUrlPattern = /^data:image\/(jpeg|png|gif|webp);base64,/;
+        if (!dataUrlPattern.test(dataUrl)) {
+            console.warn('Invalid data URL format detected');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Security: Sanitize image source for use in HTML
+    sanitizeImageSrc(src) {
+        if (!src) return '';
+
+        // Validate data URLs
+        if (src.startsWith('data:')) {
+            return this.validateDataUrl(src) ? src : '';
+        }
+
+        // For other URLs, only allow relative paths (shouldn't happen in this app)
+        return '';
     }
 
     saveData() {
@@ -90,19 +186,16 @@ class MiniatureTracker {
     }
 
     validateImageFile(file) {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        
-        if (file.size > maxSize) {
+        if (file.size > this.MAX_IMAGE_SIZE) {
             alert('Image file is too large. Please choose an image smaller than 5MB.');
             return false;
         }
-        
-        if (!allowedTypes.includes(file.type)) {
+
+        if (!this.ALLOWED_IMAGE_TYPES.includes(file.type)) {
             alert('Invalid file type. Please choose a JPEG, PNG, GIF, or WebP image.');
             return false;
         }
-        
+
         return true;
     }
 
@@ -125,8 +218,11 @@ class MiniatureTracker {
                 document.getElementById('project-notes').value = project.notes || '';
                 
                 if (project.photo) {
-                    document.getElementById('photo-preview').innerHTML = 
-                        `<img src="${project.photo}" alt="Project photo" style="max-width: 200px; border-radius: 8px;">`;
+                    const sanitizedSrc = this.sanitizeImageSrc(project.photo);
+                    if (sanitizedSrc) {
+                        document.getElementById('photo-preview').innerHTML =
+                            `<img src="${sanitizedSrc}" alt="Project photo" style="max-width: 200px; border-radius: 8px;">`;
+                    }
                 }
             }
         } else {
@@ -156,8 +252,8 @@ class MiniatureTracker {
             alert('Project name is required.');
             return;
         }
-        if (name.length > 100) {
-            alert('Project name must be 100 characters or less.');
+        if (name.length > this.MAX_NAME_LENGTH) {
+            alert(`Project name must be ${this.MAX_NAME_LENGTH} characters or less.`);
             return;
         }
         
@@ -226,8 +322,11 @@ class MiniatureTracker {
                 document.getElementById('mini-notes').value = mini.notes || '';
                 
                 if (mini.photo) {
-                    document.getElementById('mini-photo-preview').innerHTML = 
-                        `<img src="${mini.photo}" alt="Miniature photo" style="max-width: 200px; border-radius: 8px;">`;
+                    const sanitizedSrc = this.sanitizeImageSrc(mini.photo);
+                    if (sanitizedSrc) {
+                        document.getElementById('mini-photo-preview').innerHTML =
+                            `<img src="${sanitizedSrc}" alt="Miniature photo" style="max-width: 200px; border-radius: 8px;">`;
+                    }
                 }
             }
         } else {
@@ -258,8 +357,8 @@ class MiniatureTracker {
             alert('Miniature name is required.');
             return;
         }
-        if (name.length > 100) {
-            alert('Miniature name must be 100 characters or less.');
+        if (name.length > this.MAX_NAME_LENGTH) {
+            alert(`Miniature name must be ${this.MAX_NAME_LENGTH} characters or less.`);
             return;
         }
         
@@ -339,11 +438,25 @@ class MiniatureTracker {
     previewPhoto(e, previewId) {
         const file = e.target.files[0];
         const preview = document.getElementById(previewId);
-        
+
         if (file) {
+            // Validate file before preview
+            if (!this.validateImageFile(file)) {
+                e.target.value = ''; // Clear the file input
+                preview.innerHTML = '';
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; border-radius: 8px;">`;
+                const dataUrl = e.target.result;
+                const sanitizedSrc = this.sanitizeImageSrc(dataUrl);
+                if (sanitizedSrc) {
+                    preview.innerHTML = `<img src="${sanitizedSrc}" alt="Preview" style="max-width: 200px; border-radius: 8px;">`;
+                } else {
+                    preview.innerHTML = '';
+                    alert('Invalid image data detected.');
+                }
             };
             reader.readAsDataURL(file);
         } else {
@@ -372,16 +485,16 @@ class MiniatureTracker {
         const completedCount = miniatures.filter(m => m.stage === 'finished').length;
         
         return `
-            <div class="project-card">
+            <div class="project-card" data-project-id="${this.escapeHtml(project.id)}">
                 <div class="project-header">
                     <h3 class="project-title">${this.escapeHtml(project.name)}</h3>
                     <div class="project-actions">
-                        <button class="btn btn-small btn-secondary" onclick="tracker.openProjectModal('${this.escapeHtml(project.id)}')">Edit</button>
-                        <button class="btn btn-small btn-secondary" onclick="tracker.deleteProject('${this.escapeHtml(project.id)}')" style="background: #fed7d7; color: #c53030;">Delete</button>
+                        <button class="btn btn-small btn-secondary edit-project-btn" data-project-id="${this.escapeHtml(project.id)}">Edit</button>
+                        <button class="btn btn-small btn-secondary delete-project-btn" data-project-id="${this.escapeHtml(project.id)}" style="background: #fed7d7; color: #c53030;">Delete</button>
                     </div>
                 </div>
                 
-                ${project.photo ? `<img src="${project.photo}" alt="${this.escapeHtml(project.name)}" class="project-photo">` : ''}
+                ${project.photo ? `<img src="${this.sanitizeImageSrc(project.photo)}" alt="${this.escapeHtml(project.name)}" class="project-photo">` : ''}
                 
                 ${project.description ? `<p class="project-description">${this.escapeHtml(project.description)}</p>` : ''}
                 
@@ -395,7 +508,7 @@ class MiniatureTracker {
                 <div class="miniatures-section">
                     <h4>
                         Miniatures (${completedCount}/${miniatures.length} completed)
-                        <button class="btn btn-small btn-primary" onclick="tracker.openMiniatureModal('${this.escapeHtml(project.id)}')">Add Mini</button>
+                        <button class="btn btn-small btn-primary add-mini-btn" data-project-id="${this.escapeHtml(project.id)}">Add Mini</button>
                     </h4>
                     <div class="miniatures-list">
                         ${miniatures.map(mini => this.renderMiniatureItem(project.id, mini)).join('')}
@@ -414,7 +527,7 @@ class MiniatureTracker {
 
     renderMiniatureItem(projectId, mini) {
         return `
-            <div class="miniature-item">
+            <div class="miniature-item" data-project-id="${this.escapeHtml(projectId)}" data-mini-id="${this.escapeHtml(mini.id)}">
                 <div class="miniature-info">
                     <div class="miniature-name">${this.escapeHtml(mini.name)}</div>
                     <span class="miniature-stage stage-${this.escapeHtml(mini.stage)}">${this.escapeHtml(mini.stage)}</span>
@@ -427,9 +540,9 @@ class MiniatureTracker {
                     ${mini.notes ? `<div style="font-size: 0.8rem; color: #4a5568; margin-top: 5px;">${this.escapeHtml(mini.notes)}</div>` : ''}
                 </div>
                 <div style="display: flex; align-items: center; gap: 5px;">
-                    ${mini.photo ? `<img src="${mini.photo}" alt="${this.escapeHtml(mini.name)}" class="miniature-photo">` : ''}
-                    <button class="btn btn-small btn-secondary" onclick="tracker.openMiniatureModal('${this.escapeHtml(projectId)}', '${this.escapeHtml(mini.id)}')">Edit</button>
-                    <button class="btn btn-small btn-secondary" onclick="tracker.deleteMiniature('${this.escapeHtml(projectId)}', '${this.escapeHtml(mini.id)}')" style="background: #fed7d7; color: #c53030;">×</button>
+                    ${mini.photo ? `<img src="${this.sanitizeImageSrc(mini.photo)}" alt="${this.escapeHtml(mini.name)}" class="miniature-photo">` : ''}
+                    <button class="btn btn-small btn-secondary edit-mini-btn" data-project-id="${this.escapeHtml(projectId)}" data-mini-id="${this.escapeHtml(mini.id)}">Edit</button>
+                    <button class="btn btn-small btn-secondary delete-mini-btn" data-project-id="${this.escapeHtml(projectId)}" data-mini-id="${this.escapeHtml(mini.id)}" style="background: #fed7d7; color: #c53030;">×</button>
                 </div>
             </div>
         `;
@@ -484,8 +597,8 @@ class MiniatureTracker {
             alert('Template name is required.');
             return;
         }
-        if (name.length > 50) {
-            alert('Template name must be 50 characters or less.');
+        if (name.length > this.MAX_TEMPLATE_NAME_LENGTH) {
+            alert(`Template name must be ${this.MAX_TEMPLATE_NAME_LENGTH} characters or less.`);
             return;
         }
         
@@ -528,10 +641,10 @@ class MiniatureTracker {
         }
         
         container.innerHTML = this.templates.map(template => `
-            <div class="template-item">
+            <div class="template-item" data-template-id="${this.escapeHtml(template.id)}">
                 <div class="template-header">
                     <span class="template-name">${this.escapeHtml(template.name)}</span>
-                    <button class="btn btn-small btn-secondary" onclick="tracker.deleteTemplate('${this.escapeHtml(template.id)}')" style="background: #fed7d7; color: #c53030;">Delete</button>
+                    <button class="btn btn-small btn-secondary delete-template-btn" data-template-id="${this.escapeHtml(template.id)}" style="background: #fed7d7; color: #c53030;">Delete</button>
                 </div>
                 <div class="template-recipe">${this.escapeHtml(template.recipe)}</div>
             </div>
@@ -548,5 +661,8 @@ class MiniatureTracker {
     }
 }
 
-// Initialize the app
-const tracker = new MiniatureTracker();
+// Initialize the app in an IIFE to avoid global namespace pollution
+(function() {
+    'use strict';
+    const tracker = new MiniatureTracker();
+})();
