@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=sqlite:./miniature_tracker.db
+      - PORT=3000
+      - STORAGE_TYPE=local
+      - LOCAL_STORAGE_PATH=./uploads
+      - RUST_LOG=info
+    volumes:
+      # Persist database and uploads
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional PostgreSQL for testing cloud-like setup locally
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=miniature_tracker
+      - POSTGRES_USER=tracker_user
+      - POSTGRES_PASSWORD=tracker_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    profiles:
+      - postgres
+
+  # Development setup with hot reload
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+    environment:
+      - DATABASE_URL=sqlite:./miniature_tracker.db
+      - PORT=3000
+      - STORAGE_TYPE=local
+      - LOCAL_STORAGE_PATH=./uploads
+      - RUST_LOG=debug
+    volumes:
+      - .:/app
+      - /app/target
+      - /app/frontend/node_modules
+    restart: unless-stopped
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:

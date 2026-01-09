@@ -1,0 +1,24 @@
+{
+  "environment": "prod",
+  "region": "us-east-1",
+  "database": {
+    "instanceType": "t3.small",
+    "multiAz": true,
+    "backupRetention": 7,
+    "deletionProtection": true
+  },
+  "ecs": {
+    "cpu": 512,
+    "memory": 1024,
+    "desiredCount": 2,
+    "maxCapacity": 10
+  },
+  "monitoring": {
+    "containerInsights": true,
+    "detailedMonitoring": true
+  },
+  "logging": {
+    "retention": "ONE_MONTH",
+    "level": "info"
+  }
+}

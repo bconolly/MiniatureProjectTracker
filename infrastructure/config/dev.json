@@ -1,0 +1,24 @@
+{
+  "environment": "dev",
+  "region": "us-east-1",
+  "database": {
+    "instanceType": "t3.micro",
+    "multiAz": false,
+    "backupRetention": 1,
+    "deletionProtection": false
+  },
+  "ecs": {
+    "cpu": 256,
+    "memory": 512,
+    "desiredCount": 1,
+    "maxCapacity": 3
+  },
+  "monitoring": {
+    "containerInsights": false,
+    "detailedMonitoring": false
+  },
+  "logging": {
+    "retention": "ONE_WEEK",
+    "level": "debug"
+  }
+}

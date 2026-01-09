@@ -1,0 +1,52 @@
+# Development Dockerfile with hot reload
+FROM rust:1.75
+
+# Install Node.js for frontend development
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# Install cargo-watch for hot reload
+RUN cargo install cargo-watch
+
+WORKDIR /app
+
+# Copy package files and install frontend dependencies
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install
+
+# Copy workspace configuration
+COPY Cargo.toml Cargo.lock ./
+
+# Expose ports
+EXPOSE 3000 5173
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "🚀 Starting development environment..."\n\
+\n\
+# Start frontend in background\n\
+cd frontend && npm run dev -- --host 0.0.0.0 &\n\
+FRONTEND_PID=$!\n\
+\n\
+# Start backend with hot reload\n\
+cd /app && cargo watch -x "run --bin miniature-painting-tracker-backend" &\n\
+BACKEND_PID=$!\n\
+\n\
+# Cleanup function\n\
+cleanup() {\n\
+    echo "🛑 Shutting down..."\n\
+    kill $FRONTEND_PID $BACKEND_PID 2>/dev/null || true\n\
+    exit 0\n\
+}\n\
+\n\
+trap cleanup SIGINT SIGTERM\n\
+\n\
+echo "✅ Development servers started!"\n\
+echo "🌐 Frontend: http://localhost:5173"\n\
+echo "🔧 Backend: http://localhost:3000"\n\
+\n\
+wait' > /start-dev.sh && chmod +x /start-dev.sh
+
+CMD ["/start-dev.sh"]

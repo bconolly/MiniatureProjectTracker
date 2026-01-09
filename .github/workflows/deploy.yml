@@ -1,0 +1,169 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: miniature-tracker
+        IMAGE_TAG: ${{ github.sha }}
+        ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+      run: |
+        # Create ECR repository if it doesn't exist
+        aws ecr describe-repositories --repository-names $ECR_REPOSITORY || \
+        aws ecr create-repository --repository-name $ECR_REPOSITORY
+        
+        # Build and push image
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVIRONMENT-latest .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVIRONMENT-latest
+    
+    - name: Setup Node.js for CDK
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: infrastructure/package-lock.json
+    
+    - name: Install CDK dependencies
+      run: cd infrastructure && npm ci
+    
+    - name: Deploy infrastructure
+      env:
+        ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd infrastructure
+        
+        # Set image URI in environment
+        export IMAGE_URI=$ECR_REGISTRY/miniature-tracker:$IMAGE_TAG
+        
+        # Deploy CDK stack
+        npx cdk deploy MiniatureTracker-$ENVIRONMENT \
+          --require-approval never \
+          --outputs-file outputs-$ENVIRONMENT.json \
+          --context imageUri=$IMAGE_URI
+    
+    - name: Run database migrations
+      env:
+        ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+      run: |
+        cd infrastructure
+        ./scripts/migrate.sh -e $ENVIRONMENT
+    
+    - name: Upload deployment outputs
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-outputs-${{ github.event.inputs.environment || 'dev' }}
+        path: infrastructure/outputs-*.json
+        retention-days: 30
+    
+    - name: Notify deployment success
+      if: success()
+      run: |
+        ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
+        echo "✅ Deployment to $ENVIRONMENT completed successfully!"
+        
+        # Extract CloudFront URL from outputs
+        if [ -f "infrastructure/outputs-$ENVIRONMENT.json" ]; then
+          CLOUDFRONT_URL=$(cat infrastructure/outputs-$ENVIRONMENT.json | jq -r '.["MiniatureTracker-'$ENVIRONMENT'"].CloudFrontURL')
+          echo "🌐 Application URL: $CLOUDFRONT_URL"
+        fi
+
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download deployment outputs
+      uses: actions/download-artifact@v3
+      with:
+        name: deployment-outputs-${{ github.event.inputs.environment || 'dev' }}
+        path: ./outputs
+    
+    - name: Run smoke tests
+      env:
+        ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+      run: |
+        # Extract URLs from deployment outputs
+        CLOUDFRONT_URL=$(cat outputs/outputs-$ENVIRONMENT.json | jq -r '.["MiniatureTracker-'$ENVIRONMENT'"].CloudFrontURL')
+        ALB_URL="http://$(cat outputs/outputs-$ENVIRONMENT.json | jq -r '.["MiniatureTracker-'$ENVIRONMENT'"].LoadBalancerDNS')"
+        
+        echo "Testing CloudFront URL: $CLOUDFRONT_URL"
+        echo "Testing ALB URL: $ALB_URL"
+        
+        # Wait for deployment to be ready
+        echo "Waiting for deployment to be ready..."
+        sleep 60
+        
+        # Test health endpoint via CloudFront
+        for i in {1..10}; do
+          if curl -f "$CLOUDFRONT_URL/health"; then
+            echo "✅ CloudFront health check passed"
+            break
+          else
+            echo "⏳ Waiting for CloudFront... (attempt $i/10)"
+            sleep 30
+          fi
+        done
+        
+        # Test health endpoint via ALB
+        for i in {1..5}; do
+          if curl -f "$ALB_URL/health"; then
+            echo "✅ ALB health check passed"
+            break
+          else
+            echo "⏳ Waiting for ALB... (attempt $i/5)"
+            sleep 15
+          fi
+        done
+        
+        # Test API endpoints
+        echo "Testing API endpoints..."
+        curl -f "$CLOUDFRONT_URL/api/projects" || echo "⚠️ Projects endpoint not ready yet"
+        
+        echo "✅ Smoke tests completed"

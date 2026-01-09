@@ -1,0 +1,51 @@
+[package]
+name = "miniature-painting-tracker-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["multipart"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs", "trace", "request-id"] }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
+
+# Date/time
+chrono = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+# Environment variables
+dotenvy = "0.15"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# File upload handling
+multer = "3.0"
+
+# AWS SDK (for S3 storage)
+aws-config = "1.0"
+aws-sdk-s3 = "1.0"
+
+# Async trait support
+async-trait = "0.1"
+
+# Shared types
+shared-types = { path = "../shared-types" }
+
+# Testing
+[dev-dependencies]
+quickcheck = "1.0"
+quickcheck_macros = "1.0"

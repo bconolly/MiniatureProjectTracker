@@ -1,0 +1,1007 @@
+openapi: 3.0.3
+info:
+  title: Miniature Painting Tracker API
+  description: |
+    A comprehensive REST API for tracking Warhammer miniature painting projects across multiple game systems.
+    
+    The API enables painters to:
+    - Manage painting projects organized by game system and army
+    - Track individual miniatures with progress status
+    - Create and manage painting recipes
+    - Upload and manage photos of miniatures
+    
+    ## Authentication
+    Currently, the API does not require authentication. This may be added in future versions.
+    
+    ## Error Handling
+    All errors return a consistent JSON structure with appropriate HTTP status codes.
+    
+    ## File Uploads
+    Photo uploads use multipart/form-data encoding with file size limits and format validation.
+  version: 1.0.0
+  contact:
+    name: Miniature Painting Tracker
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://api.miniature-tracker.example.com/api
+    description: Production server
+
+paths:
+  /projects:
+    get:
+      summary: List all projects
+      description: Retrieve all painting projects, organized by game system and army
+      operationId: listProjects
+      tags:
+        - Projects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create a new project
+      description: Create a new painting project with required game system and army
+      operationId: createProject
+      tags:
+        - Projects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /projects/{id}:
+    get:
+      summary: Get project details
+      description: Retrieve detailed information about a specific project
+      operationId: getProject
+      tags:
+        - Projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    put:
+      summary: Update project
+      description: Update an existing project's details
+      operationId: updateProject
+      tags:
+        - Projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Delete project
+      description: Delete a project and all associated miniatures and photos
+      operationId: deleteProject
+      tags:
+        - Projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '204':
+          description: Project deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /projects/{id}/miniatures:
+    get:
+      summary: List miniatures in project
+      description: Retrieve all miniatures belonging to a specific project
+      operationId: listMiniaturesByProject
+      tags:
+        - Miniatures
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: List of miniatures in the project
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Miniature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Add miniature to project
+      description: Create a new miniature within a specific project
+      operationId: createMiniature
+      tags:
+        - Miniatures
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMiniatureRequest'
+      responses:
+        '201':
+          description: Miniature created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Miniature'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /miniatures/{id}:
+    get:
+      summary: Get miniature details
+      description: Retrieve detailed information about a specific miniature
+      operationId: getMiniature
+      tags:
+        - Miniatures
+      parameters:
+        - $ref: '#/components/parameters/MiniatureId'
+      responses:
+        '200':
+          description: Miniature details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Miniature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    put:
+      summary: Update miniature
+      description: Update miniature details including progress status
+      operationId: updateMiniature
+      tags:
+        - Miniatures
+      parameters:
+        - $ref: '#/components/parameters/MiniatureId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMiniatureRequest'
+      responses:
+        '200':
+          description: Miniature updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Miniature'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Delete miniature
+      description: Delete a miniature and all associated photos
+      operationId: deleteMiniature
+      tags:
+        - Miniatures
+      parameters:
+        - $ref: '#/components/parameters/MiniatureId'
+      responses:
+        '204':
+          description: Miniature deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /miniatures/{id}/photos:
+    get:
+      summary: List photos for miniature
+      description: Retrieve all photos associated with a specific miniature in chronological order
+      operationId: listPhotosByMiniature
+      tags:
+        - Photos
+      parameters:
+        - $ref: '#/components/parameters/MiniatureId'
+      responses:
+        '200':
+          description: List of photos for the miniature
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Photo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Upload photo for miniature
+      description: Upload a new photo and associate it with a miniature
+      operationId: uploadPhoto
+      tags:
+        - Photos
+      parameters:
+        - $ref: '#/components/parameters/MiniatureId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG, or WebP)
+              required:
+                - photo
+      responses:
+        '201':
+          description: Photo uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported media type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /photos/{id}:
+    delete:
+      summary: Delete photo
+      description: Delete a photo from both database and storage
+      operationId: deletePhoto
+      tags:
+        - Photos
+      parameters:
+        - $ref: '#/components/parameters/PhotoId'
+      responses:
+        '204':
+          description: Photo deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /recipes:
+    get:
+      summary: List painting recipes
+      description: Retrieve all painting recipes, optionally filtered by miniature type
+      operationId: listRecipes
+      tags:
+        - Recipes
+      parameters:
+        - name: type
+          in: query
+          description: Filter recipes by miniature type
+          required: false
+          schema:
+            $ref: '#/components/schemas/MiniatureType'
+      responses:
+        '200':
+          description: List of recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaintingRecipe'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create a new recipe
+      description: Create a new painting recipe
+      operationId: createRecipe
+      tags:
+        - Recipes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRecipeRequest'
+      responses:
+        '201':
+          description: Recipe created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaintingRecipe'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /recipes/{id}:
+    get:
+      summary: Get recipe details
+      description: Retrieve detailed information about a specific recipe
+      operationId: getRecipe
+      tags:
+        - Recipes
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Recipe details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaintingRecipe'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    put:
+      summary: Update recipe
+      description: Update an existing recipe's details
+      operationId: updateRecipe
+      tags:
+        - Recipes
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecipeRequest'
+      responses:
+        '200':
+          description: Recipe updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaintingRecipe'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Delete recipe
+      description: Delete a painting recipe
+      operationId: deleteRecipe
+      tags:
+        - Recipes
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '204':
+          description: Recipe deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  parameters:
+    ProjectId:
+      name: id
+      in: path
+      description: Project ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    
+    MiniatureId:
+      name: id
+      in: path
+      description: Miniature ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    
+    PhotoId:
+      name: id
+      in: path
+      description: Photo ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    
+    RecipeId:
+      name: id
+      in: path
+      description: Recipe ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+
+  schemas:
+    GameSystem:
+      type: string
+      enum:
+        - age_of_sigmar
+        - horus_heresy
+        - warhammer_40k
+      description: Warhammer game system
+      example: age_of_sigmar
+
+    MiniatureType:
+      type: string
+      enum:
+        - troop
+        - character
+      description: Type of miniature
+      example: troop
+
+    ProgressStatus:
+      type: string
+      enum:
+        - unpainted
+        - primed
+        - basecoated
+        - detailed
+        - completed
+      description: Current painting progress status
+      example: basecoated
+
+    Project:
+      type: object
+      required:
+        - id
+        - name
+        - game_system
+        - army
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique project identifier
+          example: 1
+        name:
+          type: string
+          maxLength: 255
+          description: Project name
+          example: "Space Marines Chapter"
+        game_system:
+          $ref: '#/components/schemas/GameSystem'
+        army:
+          type: string
+          maxLength: 255
+          description: Army or faction name
+          example: "Ultramarines"
+        description:
+          type: string
+          nullable: true
+          description: Optional project description
+          example: "My first Space Marine army for Warhammer 40K"
+        created_at:
+          type: string
+          format: date-time
+          description: Project creation timestamp
+          example: "2024-01-09T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-01-09T15:45:00Z"
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+        - game_system
+        - army
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Project name
+          example: "Space Marines Chapter"
+        game_system:
+          $ref: '#/components/schemas/GameSystem'
+        army:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Army or faction name
+          example: "Ultramarines"
+        description:
+          type: string
+          nullable: true
+          description: Optional project description
+          example: "My first Space Marine army for Warhammer 40K"
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Project name
+          example: "Space Marines Chapter"
+        game_system:
+          $ref: '#/components/schemas/GameSystem'
+        army:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Army or faction name
+          example: "Ultramarines"
+        description:
+          type: string
+          nullable: true
+          description: Optional project description
+          example: "My first Space Marine army for Warhammer 40K"
+
+    Miniature:
+      type: object
+      required:
+        - id
+        - project_id
+        - name
+        - miniature_type
+        - progress_status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique miniature identifier
+          example: 1
+        project_id:
+          type: integer
+          format: int64
+          description: ID of the project this miniature belongs to
+          example: 1
+        name:
+          type: string
+          maxLength: 255
+          description: Miniature name
+          example: "Captain with Power Sword"
+        miniature_type:
+          $ref: '#/components/schemas/MiniatureType'
+        progress_status:
+          $ref: '#/components/schemas/ProgressStatus'
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes about the miniature
+          example: "Need to add more highlights to the armor"
+        created_at:
+          type: string
+          format: date-time
+          description: Miniature creation timestamp
+          example: "2024-01-09T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-01-09T15:45:00Z"
+
+    CreateMiniatureRequest:
+      type: object
+      required:
+        - name
+        - miniature_type
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Miniature name
+          example: "Captain with Power Sword"
+        miniature_type:
+          $ref: '#/components/schemas/MiniatureType'
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes about the miniature
+          example: "Need to add more highlights to the armor"
+
+    UpdateMiniatureRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Miniature name
+          example: "Captain with Power Sword"
+        progress_status:
+          $ref: '#/components/schemas/ProgressStatus'
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes about the miniature
+          example: "Need to add more highlights to the armor"
+
+    PaintingRecipe:
+      type: object
+      required:
+        - id
+        - name
+        - miniature_type
+        - steps
+        - paints_used
+        - techniques
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique recipe identifier
+          example: 1
+        name:
+          type: string
+          maxLength: 255
+          description: Recipe name
+          example: "Ultramarines Blue Armor"
+        miniature_type:
+          $ref: '#/components/schemas/MiniatureType'
+        steps:
+          type: array
+          items:
+            type: string
+          description: Step-by-step painting instructions
+          example: 
+            - "Prime with Chaos Black"
+            - "Base coat with Macragge Blue"
+            - "Wash with Nuln Oil"
+            - "Highlight with Calgar Blue"
+        paints_used:
+          type: array
+          items:
+            type: string
+          description: List of paints used in the recipe
+          example:
+            - "Chaos Black"
+            - "Macragge Blue"
+            - "Nuln Oil"
+            - "Calgar Blue"
+        techniques:
+          type: array
+          items:
+            type: string
+          description: Painting techniques used
+          example:
+            - "Base coating"
+            - "Washing"
+            - "Edge highlighting"
+        notes:
+          type: string
+          nullable: true
+          description: Optional recipe notes
+          example: "Works well for all Space Marine armor"
+        created_at:
+          type: string
+          format: date-time
+          description: Recipe creation timestamp
+          example: "2024-01-09T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-01-09T15:45:00Z"
+
+    CreateRecipeRequest:
+      type: object
+      required:
+        - name
+        - miniature_type
+        - steps
+        - paints_used
+        - techniques
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Recipe name
+          example: "Ultramarines Blue Armor"
+        miniature_type:
+          $ref: '#/components/schemas/MiniatureType'
+        steps:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Step-by-step painting instructions
+          example: 
+            - "Prime with Chaos Black"
+            - "Base coat with Macragge Blue"
+            - "Wash with Nuln Oil"
+            - "Highlight with Calgar Blue"
+        paints_used:
+          type: array
+          items:
+            type: string
+          description: List of paints used in the recipe
+          example:
+            - "Chaos Black"
+            - "Macragge Blue"
+            - "Nuln Oil"
+            - "Calgar Blue"
+        techniques:
+          type: array
+          items:
+            type: string
+          description: Painting techniques used
+          example:
+            - "Base coating"
+            - "Washing"
+            - "Edge highlighting"
+        notes:
+          type: string
+          nullable: true
+          description: Optional recipe notes
+          example: "Works well for all Space Marine armor"
+
+    UpdateRecipeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          description: Recipe name
+          example: "Ultramarines Blue Armor"
+        steps:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Step-by-step painting instructions
+          example: 
+            - "Prime with Chaos Black"
+            - "Base coat with Macragge Blue"
+            - "Wash with Nuln Oil"
+            - "Highlight with Calgar Blue"
+        paints_used:
+          type: array
+          items:
+            type: string
+          description: List of paints used in the recipe
+          example:
+            - "Chaos Black"
+            - "Macragge Blue"
+            - "Nuln Oil"
+            - "Calgar Blue"
+        techniques:
+          type: array
+          items:
+            type: string
+          description: Painting techniques used
+          example:
+            - "Base coating"
+            - "Washing"
+            - "Edge highlighting"
+        notes:
+          type: string
+          nullable: true
+          description: Optional recipe notes
+          example: "Works well for all Space Marine armor"
+
+    Photo:
+      type: object
+      required:
+        - id
+        - miniature_id
+        - filename
+        - file_path
+        - file_size
+        - mime_type
+        - uploaded_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique photo identifier
+          example: 1
+        miniature_id:
+          type: integer
+          format: int64
+          description: ID of the miniature this photo belongs to
+          example: 1
+        filename:
+          type: string
+          maxLength: 255
+          description: Original filename
+          example: "captain_front_view.jpg"
+        file_path:
+          type: string
+          maxLength: 500
+          description: Storage path of the photo
+          example: "/photos/miniatures/1/captain_front_view.jpg"
+        file_size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 1048576
+        mime_type:
+          type: string
+          maxLength: 100
+          description: MIME type of the photo
+          enum:
+            - image/jpeg
+            - image/png
+            - image/webp
+          example: "image/jpeg"
+        uploaded_at:
+          type: string
+          format: date-time
+          description: Photo upload timestamp
+          example: "2024-01-09T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - error_type
+            - message
+            - timestamp
+          properties:
+            error_type:
+              type: string
+              description: Type of error
+              example: "validation_error"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "Missing required field: name"
+            details:
+              type: object
+              description: Additional error details
+              example:
+                field: "name"
+                code: "required"
+            timestamp:
+              type: string
+              format: date-time
+              description: Error timestamp
+              example: "2024-01-09T10:30:00Z"
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              error_type: "validation_error"
+              message: "Missing required field: name"
+              details:
+                field: "name"
+                code: "required"
+              timestamp: "2024-01-09T10:30:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              error_type: "not_found"
+              message: "Project not found"
+              timestamp: "2024-01-09T10:30:00Z"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              error_type: "internal_error"
+              message: "An unexpected error occurred"
+              timestamp: "2024-01-09T10:30:00Z"
+
+tags:
+  - name: Projects
+    description: Project management operations
+  - name: Miniatures
+    description: Miniature tracking operations
+  - name: Photos
+    description: Photo management operations
+  - name: Recipes
+    description: Painting recipe operations
