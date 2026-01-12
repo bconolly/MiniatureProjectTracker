@@ -1,7 +1,9 @@
-use sqlx::{Pool, Sqlite, Postgres, Row};
-use chrono::Utc;
-use shared_types::{Miniature, MiniatureType, ProgressStatus, CreateMiniatureRequest, UpdateMiniatureRequest};
 use crate::database::Database;
+use chrono::Utc;
+use shared_types::{
+    CreateMiniatureRequest, Miniature, MiniatureType, ProgressStatus, UpdateMiniatureRequest,
+};
+use sqlx::{Pool, Postgres, Row, Sqlite};
 
 pub struct MiniatureRepository;
 
@@ -12,7 +14,7 @@ impl MiniatureRepository {
         request: CreateMiniatureRequest,
     ) -> Result<Miniature, sqlx::Error> {
         let now = Utc::now();
-        
+
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
@@ -134,16 +136,19 @@ impl MiniatureRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| Miniature {
-                    id: r.get("id"),
-                    project_id: r.get("project_id"),
-                    name: r.get("name"),
-                    miniature_type: r.get("miniature_type"),
-                    progress_status: r.get("progress_status"),
-                    notes: r.get("notes"),
-                    created_at: r.get("created_at"),
-                    updated_at: r.get("updated_at"),
-                }).collect())
+                Ok(rows
+                    .into_iter()
+                    .map(|r| Miniature {
+                        id: r.get("id"),
+                        project_id: r.get("project_id"),
+                        name: r.get("name"),
+                        miniature_type: r.get("miniature_type"),
+                        progress_status: r.get("progress_status"),
+                        notes: r.get("notes"),
+                        created_at: r.get("created_at"),
+                        updated_at: r.get("updated_at"),
+                    })
+                    .collect())
             }
             Database::Postgres(pool) => {
                 let rows = sqlx::query(
@@ -153,16 +158,19 @@ impl MiniatureRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| Miniature {
-                    id: r.get("id"),
-                    project_id: r.get("project_id"),
-                    name: r.get("name"),
-                    miniature_type: r.get("miniature_type"),
-                    progress_status: r.get("progress_status"),
-                    notes: r.get("notes"),
-                    created_at: r.get("created_at"),
-                    updated_at: r.get("updated_at"),
-                }).collect())
+                Ok(rows
+                    .into_iter()
+                    .map(|r| Miniature {
+                        id: r.get("id"),
+                        project_id: r.get("project_id"),
+                        name: r.get("name"),
+                        miniature_type: r.get("miniature_type"),
+                        progress_status: r.get("progress_status"),
+                        notes: r.get("notes"),
+                        created_at: r.get("created_at"),
+                        updated_at: r.get("updated_at"),
+                    })
+                    .collect())
             }
         }
     }

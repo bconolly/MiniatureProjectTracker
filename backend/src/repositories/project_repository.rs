@@ -1,7 +1,7 @@
-use sqlx::{Pool, Sqlite, Postgres, Row};
-use chrono::Utc;
-use shared_types::{Project, GameSystem, CreateProjectRequest, UpdateProjectRequest};
 use crate::database::Database;
+use chrono::Utc;
+use shared_types::{CreateProjectRequest, GameSystem, Project, UpdateProjectRequest};
+use sqlx::{Pool, Postgres, Row, Sqlite};
 
 pub struct ProjectRepository;
 
@@ -11,7 +11,7 @@ impl ProjectRepository {
         request: CreateProjectRequest,
     ) -> Result<Project, sqlx::Error> {
         let now = Utc::now();
-        
+
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
@@ -70,10 +70,7 @@ impl ProjectRepository {
         }
     }
 
-    pub async fn find_by_id(
-        database: &Database,
-        id: i64,
-    ) -> Result<Option<Project>, sqlx::Error> {
+    pub async fn find_by_id(database: &Database, id: i64) -> Result<Option<Project>, sqlx::Error> {
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
@@ -123,15 +120,18 @@ impl ProjectRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| Project {
-                    id: r.get("id"),
-                    name: r.get("name"),
-                    game_system: r.get("game_system"),
-                    army: r.get("army"),
-                    description: r.get("description"),
-                    created_at: r.get("created_at"),
-                    updated_at: r.get("updated_at"),
-                }).collect())
+                Ok(rows
+                    .into_iter()
+                    .map(|r| Project {
+                        id: r.get("id"),
+                        name: r.get("name"),
+                        game_system: r.get("game_system"),
+                        army: r.get("army"),
+                        description: r.get("description"),
+                        created_at: r.get("created_at"),
+                        updated_at: r.get("updated_at"),
+                    })
+                    .collect())
             }
             Database::Postgres(pool) => {
                 let rows = sqlx::query(
@@ -140,15 +140,18 @@ impl ProjectRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| Project {
-                    id: r.get("id"),
-                    name: r.get("name"),
-                    game_system: r.get("game_system"),
-                    army: r.get("army"),
-                    description: r.get("description"),
-                    created_at: r.get("created_at"),
-                    updated_at: r.get("updated_at"),
-                }).collect())
+                Ok(rows
+                    .into_iter()
+                    .map(|r| Project {
+                        id: r.get("id"),
+                        name: r.get("name"),
+                        game_system: r.get("game_system"),
+                        army: r.get("army"),
+                        description: r.get("description"),
+                        created_at: r.get("created_at"),
+                        updated_at: r.get("updated_at"),
+                    })
+                    .collect())
             }
         }
     }
@@ -179,7 +182,7 @@ impl ProjectRepository {
                     SET name = ?1, game_system = ?2, army = ?3, description = ?4, updated_at = ?5
                     WHERE id = ?6
                     RETURNING id, name, game_system, army, description, created_at, updated_at
-                    "#
+                    "#,
                 )
                 .bind(&name)
                 .bind(&game_system)
@@ -207,7 +210,7 @@ impl ProjectRepository {
                     SET name = $1, game_system = $2, army = $3, description = $4, updated_at = $5
                     WHERE id = $6
                     RETURNING id, name, game_system, army, description, created_at, updated_at
-                    "#
+                    "#,
                 )
                 .bind(&name)
                 .bind(&game_system)

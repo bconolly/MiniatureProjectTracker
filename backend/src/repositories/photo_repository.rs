@@ -1,7 +1,7 @@
-use sqlx::{Pool, Sqlite, Postgres, Row};
+use crate::database::Database;
 use chrono::Utc;
 use shared_types::Photo;
-use crate::database::Database;
+use sqlx::{Pool, Postgres, Row, Sqlite};
 
 pub struct PhotoRepository;
 
@@ -15,7 +15,7 @@ impl PhotoRepository {
         mime_type: String,
     ) -> Result<Photo, sqlx::Error> {
         let now = Utc::now();
-        
+
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
@@ -74,10 +74,7 @@ impl PhotoRepository {
         }
     }
 
-    pub async fn find_by_id(
-        database: &Database,
-        id: i64,
-    ) -> Result<Option<Photo>, sqlx::Error> {
+    pub async fn find_by_id(database: &Database, id: i64) -> Result<Option<Photo>, sqlx::Error> {
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
@@ -131,15 +128,18 @@ impl PhotoRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| Photo {
-                    id: r.get("id"),
-                    miniature_id: r.get("miniature_id"),
-                    filename: r.get("filename"),
-                    file_path: r.get("file_path"),
-                    file_size: r.get("file_size"),
-                    mime_type: r.get("mime_type"),
-                    uploaded_at: r.get("uploaded_at"),
-                }).collect())
+                Ok(rows
+                    .into_iter()
+                    .map(|r| Photo {
+                        id: r.get("id"),
+                        miniature_id: r.get("miniature_id"),
+                        filename: r.get("filename"),
+                        file_path: r.get("file_path"),
+                        file_size: r.get("file_size"),
+                        mime_type: r.get("mime_type"),
+                        uploaded_at: r.get("uploaded_at"),
+                    })
+                    .collect())
             }
             Database::Postgres(pool) => {
                 let rows = sqlx::query(
@@ -149,15 +149,18 @@ impl PhotoRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| Photo {
-                    id: r.get("id"),
-                    miniature_id: r.get("miniature_id"),
-                    filename: r.get("filename"),
-                    file_path: r.get("file_path"),
-                    file_size: r.get("file_size"),
-                    mime_type: r.get("mime_type"),
-                    uploaded_at: r.get("uploaded_at"),
-                }).collect())
+                Ok(rows
+                    .into_iter()
+                    .map(|r| Photo {
+                        id: r.get("id"),
+                        miniature_id: r.get("miniature_id"),
+                        filename: r.get("filename"),
+                        file_path: r.get("file_path"),
+                        file_size: r.get("file_size"),
+                        mime_type: r.get("mime_type"),
+                        uploaded_at: r.get("uploaded_at"),
+                    })
+                    .collect())
             }
         }
     }
@@ -165,7 +168,7 @@ impl PhotoRepository {
     pub async fn delete(database: &Database, id: i64) -> Result<Option<Photo>, sqlx::Error> {
         // First get the photo to return its details for cleanup
         let photo = Self::find_by_id(database, id).await?;
-        
+
         if photo.is_some() {
             match database {
                 Database::Sqlite(pool) => {
@@ -204,7 +207,7 @@ impl PhotoRepository {
     ) -> Result<Vec<Photo>, sqlx::Error> {
         // First get all photos to return their details for cleanup
         let photos = Self::find_by_miniature_id(database, miniature_id).await?;
-        
+
         if !photos.is_empty() {
             match database {
                 Database::Sqlite(pool) => {
@@ -221,7 +224,7 @@ impl PhotoRepository {
                 }
             }
         }
-        
+
         Ok(photos)
     }
 }

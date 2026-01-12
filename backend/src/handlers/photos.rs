@@ -1,16 +1,16 @@
-use axum::{
-    extract::{Path, State, Multipart},
-    response::Json,
-    http::StatusCode,
-};
-use serde_json::json;
-use shared_types::{Photo, ErrorResponse, ErrorDetails};
-use crate::database::Database;
-use crate::repositories::PhotoRepository;
-use crate::repositories::MiniatureRepository;
-use crate::services::storage_service::StorageService;
 use crate::config::Config;
+use crate::database::Database;
+use crate::repositories::MiniatureRepository;
+use crate::repositories::PhotoRepository;
+use crate::services::storage_service::StorageService;
+use axum::{
+    extract::{Multipart, Path, State},
+    http::StatusCode,
+    response::Json,
+};
 use chrono::Utc;
+use serde_json::json;
+use shared_types::{ErrorDetails, ErrorResponse, Photo};
 
 const MAX_FILE_SIZE: usize = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES: &[&str] = &["image/jpeg", "image/png", "image/webp"];
@@ -22,7 +22,7 @@ pub async fn upload_photo(
 ) -> Result<Json<Photo>, (StatusCode, Json<ErrorResponse>)> {
     // Check if miniature exists
     match MiniatureRepository::find_by_id(&database, miniature_id).await {
-        Ok(Some(_)) => {},
+        Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -70,11 +70,11 @@ pub async fn upload_photo(
         )
     })? {
         let field_name = field.name().unwrap_or("").to_string();
-        
+
         if field_name == "photo" {
             filename = field.file_name().map(|s| s.to_string());
             mime_type = field.content_type().map(|s| s.to_string());
-            
+
             // Validate MIME type
             if let Some(ref mt) = mime_type {
                 if !ALLOWED_MIME_TYPES.contains(&mt.as_str()) {
@@ -83,7 +83,11 @@ pub async fn upload_photo(
                         Json(ErrorResponse {
                             error: ErrorDetails {
                                 error_type: "invalid_file_type".to_string(),
-                                message: format!("Unsupported file type: {}. Allowed types: {}", mt, ALLOWED_MIME_TYPES.join(", ")),
+                                message: format!(
+                                    "Unsupported file type: {}. Allowed types: {}",
+                                    mt,
+                                    ALLOWED_MIME_TYPES.join(", ")
+                                ),
                                 details: None,
                                 timestamp: Utc::now(),
                             },
@@ -91,7 +95,7 @@ pub async fn upload_photo(
                     ));
                 }
             }
-            
+
             let data = field.bytes().await.map_err(|e| {
                 (
                     StatusCode::BAD_REQUEST,
@@ -105,7 +109,7 @@ pub async fn upload_photo(
                     }),
                 )
             })?;
-            
+
             // Check file size
             if data.len() > MAX_FILE_SIZE {
                 return Err((
@@ -113,14 +117,18 @@ pub async fn upload_photo(
                     Json(ErrorResponse {
                         error: ErrorDetails {
                             error_type: "file_too_large".to_string(),
-                            message: format!("File size {} bytes exceeds maximum allowed size of {} bytes", data.len(), MAX_FILE_SIZE),
+                            message: format!(
+                                "File size {} bytes exceeds maximum allowed size of {} bytes",
+                                data.len(),
+                                MAX_FILE_SIZE
+                            ),
                             details: None,
                             timestamp: Utc::now(),
                         },
                     }),
                 ));
             }
-            
+
             file_data = Some(data.to_vec());
         }
     }
@@ -198,19 +206,22 @@ pub async fn upload_photo(
     })?;
 
     // Store the file
-    let file_path = storage_service.store_photo(&file_data, &filename, miniature_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: ErrorDetails {
-                    error_type: "storage_error".to_string(),
-                    message: format!("Failed to store photo: {}", e),
-                    details: None,
-                    timestamp: Utc::now(),
-                },
-            }),
-        )
-    })?;
+    let file_path = storage_service
+        .store_photo(&file_data, &filename, miniature_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: ErrorDetails {
+                        error_type: "storage_error".to_string(),
+                        message: format!("Failed to store photo: {}", e),
+                        details: None,
+                        timestamp: Utc::now(),
+                    },
+                }),
+            )
+        })?;
 
     // Save photo record to database
     let photo = PhotoRepository::create(
@@ -220,7 +231,9 @@ pub async fn upload_photo(
         file_path,
         file_data.len() as i64,
         mime_type,
-    ).await.map_err(|e| {
+    )
+    .await
+    .map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
@@ -243,7 +256,7 @@ pub async fn list_photos(
 ) -> Result<Json<Vec<Photo>>, (StatusCode, Json<ErrorResponse>)> {
     // Check if miniature exists
     match MiniatureRepository::find_by_id(&database, miniature_id).await {
-        Ok(Some(_)) => {},
+        Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -272,19 +285,21 @@ pub async fn list_photos(
         }
     }
 
-    let photos = PhotoRepository::find_by_miniature_id(&database, miniature_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: ErrorDetails {
-                    error_type: "database_error".to_string(),
-                    message: format!("Failed to retrieve photos: {}", e),
-                    details: None,
-                    timestamp: Utc::now(),
-                },
-            }),
-        )
-    })?;
+    let photos = PhotoRepository::find_by_miniature_id(&database, miniature_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: ErrorDetails {
+                        error_type: "database_error".to_string(),
+                        message: format!("Failed to retrieve photos: {}", e),
+                        details: None,
+                        timestamp: Utc::now(),
+                    },
+                }),
+            )
+        })?;
 
     Ok(Json(photos))
 }
@@ -294,19 +309,21 @@ pub async fn delete_photo(
     State(database): State<Database>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Get photo details before deletion
-    let photo = PhotoRepository::delete(&database, photo_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: ErrorDetails {
-                    error_type: "database_error".to_string(),
-                    message: format!("Database error: {}", e),
-                    details: None,
-                    timestamp: Utc::now(),
-                },
-            }),
-        )
-    })?;
+    let photo = PhotoRepository::delete(&database, photo_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: ErrorDetails {
+                        error_type: "database_error".to_string(),
+                        message: format!("Database error: {}", e),
+                        details: None,
+                        timestamp: Utc::now(),
+                    },
+                }),
+            )
+        })?;
 
     let photo = photo.ok_or_else(|| {
         (

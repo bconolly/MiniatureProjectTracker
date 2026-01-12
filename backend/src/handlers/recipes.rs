@@ -1,16 +1,16 @@
-use axum::{
-    extract::{State, Path, Query},
-    response::Json,
-    http::StatusCode,
-};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use shared_types::{PaintingRecipe, MiniatureType, CreateRecipeRequest, UpdateRecipeRequest};
 use crate::{
     database::Database,
     error::{AppError, Result},
     repositories::recipe_repository::RecipeRepository,
 };
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use shared_types::{CreateRecipeRequest, MiniatureType, PaintingRecipe, UpdateRecipeRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct RecipeQueryParams {
@@ -26,7 +26,7 @@ pub async fn list_recipes(
         Some(miniature_type) => RecipeRepository::find_by_type(&database, miniature_type).await?,
         None => RecipeRepository::find_all(&database).await?,
     };
-    
+
     Ok(Json(serde_json::json!({
         "recipes": recipes
     })))
@@ -38,7 +38,9 @@ pub async fn create_recipe(
 ) -> Result<Json<PaintingRecipe>> {
     // Validate required fields
     if request.name.trim().is_empty() {
-        return Err(AppError::ValidationError("Recipe name is required".to_string()));
+        return Err(AppError::ValidationError(
+            "Recipe name is required".to_string(),
+        ));
     }
 
     let recipe = RecipeRepository::create(&database, request).await?;
@@ -52,7 +54,7 @@ pub async fn get_recipe(
     let recipe = RecipeRepository::find_by_id(&database, id)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Recipe with id {} not found", id)))?;
-    
+
     Ok(Json(recipe))
 }
 
@@ -64,14 +66,16 @@ pub async fn update_recipe(
     // Validate fields if provided
     if let Some(ref name) = request.name {
         if name.trim().is_empty() {
-            return Err(AppError::ValidationError("Recipe name cannot be empty".to_string()));
+            return Err(AppError::ValidationError(
+                "Recipe name cannot be empty".to_string(),
+            ));
         }
     }
 
     let recipe = RecipeRepository::update(&database, id, request)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Recipe with id {} not found", id)))?;
-    
+
     Ok(Json(recipe))
 }
 
@@ -80,10 +84,13 @@ pub async fn delete_recipe(
     Path(id): Path<i64>,
 ) -> Result<StatusCode> {
     let deleted = RecipeRepository::delete(&database, id).await?;
-    
+
     if deleted {
         Ok(StatusCode::NO_CONTENT)
     } else {
-        Err(AppError::NotFound(format!("Recipe with id {} not found", id)))
+        Err(AppError::NotFound(format!(
+            "Recipe with id {} not found",
+            id
+        )))
     }
 }

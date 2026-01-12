@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use chrono::Utc;
-use shared_types::{ErrorResponse, ErrorDetails};
+use shared_types::{ErrorDetails, ErrorResponse};
 use std::fmt;
 
 #[derive(Debug)]
@@ -48,18 +48,8 @@ impl IntoResponse for AppError {
                 msg,
                 None,
             ),
-            AppError::NotFound(msg) => (
-                StatusCode::NOT_FOUND,
-                "not_found".to_string(),
-                msg,
-                None,
-            ),
-            AppError::Conflict(msg) => (
-                StatusCode::CONFLICT,
-                "conflict".to_string(),
-                msg,
-                None,
-            ),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found".to_string(), msg, None),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, "conflict".to_string(), msg, None),
             AppError::DatabaseError(err) => {
                 tracing::error!("Database error: {}", err);
                 (

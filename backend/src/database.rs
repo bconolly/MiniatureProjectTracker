@@ -1,6 +1,6 @@
-use sqlx::{Pool, Sqlite, Postgres, migrate::MigrateDatabase, Row};
+use sqlx::{migrate::MigrateDatabase, Pool, Postgres, Row, Sqlite};
 use std::time::Duration;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub enum Database {
@@ -32,21 +32,33 @@ impl Database {
         Self::new_with_config(database_url, DatabaseConfig::default()).await
     }
 
-    pub async fn new_with_config(database_url: &str, config: DatabaseConfig) -> Result<Self, sqlx::Error> {
-        info!("Initializing database connection with URL: {}", 
-              database_url.split('@').next().unwrap_or("***"));
+    pub async fn new_with_config(
+        database_url: &str,
+        config: DatabaseConfig,
+    ) -> Result<Self, sqlx::Error> {
+        info!(
+            "Initializing database connection with URL: {}",
+            database_url.split('@').next().unwrap_or("***")
+        );
 
         if database_url.starts_with("sqlite:") {
             Self::create_sqlite_pool(database_url, config).await
-        } else if database_url.starts_with("postgres://") || database_url.starts_with("postgresql://") {
+        } else if database_url.starts_with("postgres://")
+            || database_url.starts_with("postgresql://")
+        {
             Self::create_postgres_pool(database_url, config).await
         } else {
             error!("Unsupported database URL format: {}", database_url);
-            Err(sqlx::Error::Configuration("Unsupported database URL format. Use 'sqlite:' or 'postgres://'".into()))
+            Err(sqlx::Error::Configuration(
+                "Unsupported database URL format. Use 'sqlite:' or 'postgres://'".into(),
+            ))
         }
     }
 
-    async fn create_sqlite_pool(database_url: &str, config: DatabaseConfig) -> Result<Self, sqlx::Error> {
+    async fn create_sqlite_pool(
+        database_url: &str,
+        config: DatabaseConfig,
+    ) -> Result<Self, sqlx::Error> {
         // Create database file if it doesn't exist
         if !Sqlite::database_exists(database_url).await.unwrap_or(false) {
             info!("Creating SQLite database file");
@@ -65,15 +77,16 @@ impl Database {
             pool_options = pool_options.max_lifetime(max_lifetime);
         }
 
-        let pool = pool_options
-            .connect(database_url)
-            .await?;
+        let pool = pool_options.connect(database_url).await?;
 
         info!("SQLite connection pool created successfully");
         Ok(Database::Sqlite(pool))
     }
 
-    async fn create_postgres_pool(database_url: &str, config: DatabaseConfig) -> Result<Self, sqlx::Error> {
+    async fn create_postgres_pool(
+        database_url: &str,
+        config: DatabaseConfig,
+    ) -> Result<Self, sqlx::Error> {
         let mut pool_options = sqlx::postgres::PgPoolOptions::new()
             .max_connections(config.max_connections)
             .acquire_timeout(config.acquire_timeout);
@@ -86,9 +99,7 @@ impl Database {
             pool_options = pool_options.max_lifetime(max_lifetime);
         }
 
-        let pool = pool_options
-            .connect(database_url)
-            .await?;
+        let pool = pool_options.connect(database_url).await?;
 
         info!("PostgreSQL connection pool created successfully");
         Ok(Database::Postgres(pool))
@@ -111,9 +122,7 @@ impl Database {
     pub async fn health_check(&self) -> Result<(), sqlx::Error> {
         match self {
             Database::Sqlite(pool) => {
-                let row = sqlx::query("SELECT 1 as health")
-                    .fetch_one(pool)
-                    .await?;
+                let row = sqlx::query("SELECT 1 as health").fetch_one(pool).await?;
                 let health: i32 = row.get("health");
                 if health == 1 {
                     Ok(())
@@ -122,9 +131,7 @@ impl Database {
                 }
             }
             Database::Postgres(pool) => {
-                let row = sqlx::query("SELECT 1 as health")
-                    .fetch_one(pool)
-                    .await?;
+                let row = sqlx::query("SELECT 1 as health").fetch_one(pool).await?;
                 let health: i32 = row.get("health");
                 if health == 1 {
                     Ok(())

@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod integration_tests {
     use axum::{
-        extract::{Path, State, Query},
+        extract::{Path, Query, State},
         Json,
     };
     use shared_types::{
-        CreateProjectRequest, CreateMiniatureRequest, CreateRecipeRequest, UpdateMiniatureRequest,
-        GameSystem, MiniatureType, ProgressStatus,
+        CreateMiniatureRequest, CreateProjectRequest, CreateRecipeRequest, GameSystem,
+        MiniatureType, ProgressStatus, UpdateMiniatureRequest,
     };
     use std::time::Duration;
 
@@ -46,13 +46,11 @@ mod integration_tests {
             description: Some("Complete Ultramarines army project".to_string()),
         };
 
-        let project = handlers::projects::create_project(
-            State(database.clone()),
-            Json(project_request),
-        )
-        .await
-        .expect("Failed to create project")
-        .0;
+        let project =
+            handlers::projects::create_project(State(database.clone()), Json(project_request))
+                .await
+                .expect("Failed to create project")
+                .0;
 
         assert_eq!(project.name, "Space Marines Chapter");
         assert_eq!(project.army, "Ultramarines");
@@ -123,18 +121,16 @@ mod integration_tests {
         }
 
         // Step 4: Verify project completion status by checking all miniatures
-        let project_miniatures = handlers::miniatures::list_miniatures(
-            State(database.clone()),
-            Path(project.id),
-        )
-        .await
-        .expect("Failed to list project miniatures")
-        .0;
+        let project_miniatures =
+            handlers::miniatures::list_miniatures(State(database.clone()), Path(project.id))
+                .await
+                .expect("Failed to list project miniatures")
+                .0;
 
         // Extract miniatures array from JSON response
         let miniatures_array = project_miniatures["miniatures"].as_array().unwrap();
         assert_eq!(miniatures_array.len(), 3);
-        
+
         // Check that all miniatures are completed
         for miniature_json in miniatures_array {
             let status = miniature_json["progress_status"].as_str().unwrap();
@@ -142,13 +138,11 @@ mod integration_tests {
         }
 
         // Step 5: Verify project can be retrieved with all data intact
-        let retrieved_project = handlers::projects::get_project(
-            State(database.clone()),
-            Path(project.id),
-        )
-        .await
-        .expect("Failed to retrieve project")
-        .0;
+        let retrieved_project =
+            handlers::projects::get_project(State(database.clone()), Path(project.id))
+                .await
+                .expect("Failed to retrieve project")
+                .0;
 
         assert_eq!(retrieved_project.id, project.id);
         assert_eq!(retrieved_project.name, project.name);
@@ -193,13 +187,10 @@ mod integration_tests {
         }
 
         // Step 3: List photos and verify chronological ordering
-        let photos = handlers::photos::list_photos(
-            Path(miniature.id),
-            State(database.clone()),
-        )
-        .await
-        .expect("Failed to list photos")
-        .0;
+        let photos = handlers::photos::list_photos(Path(miniature.id), State(database.clone()))
+            .await
+            .expect("Failed to list photos")
+            .0;
 
         assert_eq!(photos.len(), 4);
 
@@ -215,42 +206,34 @@ mod integration_tests {
 
         // Step 5: Delete a photo and verify removal
         let photo_to_delete = &photos[1]; // Delete the second photo
-        let deleted_photo = handlers::photos::delete_photo(
-            Path(photo_to_delete.id),
-            State(database.clone()),
-        )
-        .await
-        .expect("Failed to delete photo");
+        let deleted_photo =
+            handlers::photos::delete_photo(Path(photo_to_delete.id), State(database.clone()))
+                .await
+                .expect("Failed to delete photo");
 
         // delete_photo returns StatusCode, so we check if it's successful
         assert_eq!(deleted_photo, axum::http::StatusCode::NO_CONTENT);
 
         // Step 6: Verify photo was removed from listing
-        let remaining_photos = handlers::photos::list_photos(
-            Path(miniature.id),
-            State(database.clone()),
-        )
-        .await
-        .expect("Failed to list photos after deletion")
-        .0;
+        let remaining_photos =
+            handlers::photos::list_photos(Path(miniature.id), State(database.clone()))
+                .await
+                .expect("Failed to list photos after deletion")
+                .0;
 
         assert_eq!(remaining_photos.len(), 3);
-        assert!(!remaining_photos
-            .iter()
-            .any(|p| p.id == photo_to_delete.id));
+        assert!(!remaining_photos.iter().any(|p| p.id == photo_to_delete.id));
 
         // Step 7: Test cascade deletion - delete miniature and verify photos are removed
-        let _ = handlers::miniatures::delete_miniature(
-            State(database.clone()),
-            Path(miniature.id),
-        )
-        .await
-        .expect("Failed to delete miniature");
+        let _ = handlers::miniatures::delete_miniature(State(database.clone()), Path(miniature.id))
+            .await
+            .expect("Failed to delete miniature");
 
         // Verify all photos were cascade deleted
-        let photos_after_miniature_deletion = PhotoRepository::find_by_miniature_id(&database, miniature.id)
-            .await
-            .expect("Failed to query photos");
+        let photos_after_miniature_deletion =
+            PhotoRepository::find_by_miniature_id(&database, miniature.id)
+                .await
+                .expect("Failed to query photos");
 
         assert!(photos_after_miniature_deletion.is_empty());
     }
@@ -278,10 +261,7 @@ mod integration_tests {
                     "Calgar Blue".to_string(),
                     "Balthasar Gold".to_string(),
                 ],
-                techniques: vec![
-                    "Dry brushing".to_string(),
-                    "Edge highlighting".to_string(),
-                ],
+                techniques: vec!["Dry brushing".to_string(), "Edge highlighting".to_string()],
                 notes: Some("Standard scheme for Ultramarines troops".to_string()),
             },
             CreateRecipeRequest {
@@ -334,13 +314,10 @@ mod integration_tests {
 
         let mut created_recipes = Vec::new();
         for request in recipe_requests {
-            let recipe = handlers::recipes::create_recipe(
-                State(database.clone()),
-                Json(request),
-            )
-            .await
-            .expect("Failed to create recipe")
-            .0;
+            let recipe = handlers::recipes::create_recipe(State(database.clone()), Json(request))
+                .await
+                .expect("Failed to create recipe")
+                .0;
             created_recipes.push(recipe);
         }
 
@@ -349,7 +326,9 @@ mod integration_tests {
         // Step 2: Test recipe filtering by type
         let all_recipes = handlers::recipes::list_recipes(
             State(database.clone()),
-            Query(RecipeQueryParams { miniature_type: None }),
+            Query(RecipeQueryParams {
+                miniature_type: None,
+            }),
         )
         .await
         .expect("Failed to list all recipes")
@@ -375,13 +354,11 @@ mod integration_tests {
 
         // Step 3: Test recipe retrieval and content verification
         for recipe in &created_recipes {
-            let retrieved_recipe = handlers::recipes::get_recipe(
-                State(database.clone()),
-                Path(recipe.id),
-            )
-            .await
-            .expect("Failed to retrieve recipe")
-            .0;
+            let retrieved_recipe =
+                handlers::recipes::get_recipe(State(database.clone()), Path(recipe.id))
+                    .await
+                    .expect("Failed to retrieve recipe")
+                    .0;
 
             assert_eq!(retrieved_recipe.id, recipe.id);
             assert_eq!(retrieved_recipe.name, recipe.name);
@@ -394,10 +371,12 @@ mod integration_tests {
         let project = create_test_project(&database).await;
 
         // Create troop miniature
-        let troop_miniature = create_test_miniature_with_type(&database, project.id, MiniatureType::Troop).await;
+        let troop_miniature =
+            create_test_miniature_with_type(&database, project.id, MiniatureType::Troop).await;
 
         // Create character miniature
-        let character_miniature = create_test_miniature_with_type(&database, project.id, MiniatureType::Character).await;
+        let character_miniature =
+            create_test_miniature_with_type(&database, project.id, MiniatureType::Character).await;
 
         // Step 5: Verify appropriate recipes can be found for each miniature type
         let troop_recipe = &troop_recipes[0];
@@ -405,22 +384,25 @@ mod integration_tests {
 
         // Verify recipe types match miniature types
         assert_eq!(troop_recipe["miniature_type"].as_str().unwrap(), "Troop");
-        assert_eq!(character_recipe["miniature_type"].as_str().unwrap(), "Character");
+        assert_eq!(
+            character_recipe["miniature_type"].as_str().unwrap(),
+            "Character"
+        );
 
         // Step 6: Test recipe deletion
         let recipe_to_delete = &created_recipes[2]; // Delete the "Quick Battle Ready" recipe
-        let deletion_result = handlers::recipes::delete_recipe(
-            State(database.clone()),
-            Path(recipe_to_delete.id),
-        )
-        .await;
+        let deletion_result =
+            handlers::recipes::delete_recipe(State(database.clone()), Path(recipe_to_delete.id))
+                .await;
 
         assert!(deletion_result.is_ok());
 
         // Verify recipe was deleted
         let recipes_after_deletion = handlers::recipes::list_recipes(
             State(database.clone()),
-            Query(RecipeQueryParams { miniature_type: None }),
+            Query(RecipeQueryParams {
+                miniature_type: None,
+            }),
         )
         .await
         .expect("Failed to list recipes after deletion")
@@ -457,11 +439,9 @@ mod integration_tests {
 
         // Test 2: Accessing non-existent resources
         let non_existent_project_id = 99999;
-        let result = handlers::projects::get_project(
-            State(database.clone()),
-            Path(non_existent_project_id),
-        )
-        .await;
+        let result =
+            handlers::projects::get_project(State(database.clone()), Path(non_existent_project_id))
+                .await;
 
         assert!(result.is_err(), "Non-existent project should return error");
 
@@ -481,7 +461,10 @@ mod integration_tests {
         )
         .await;
 
-        assert!(result.is_err(), "Whitespace-only miniature name should fail validation");
+        assert!(
+            result.is_err(),
+            "Whitespace-only miniature name should fail validation"
+        );
 
         // Test 4: Orphaned miniature creation (non-existent project)
         let valid_miniature_request = CreateMiniatureRequest {
@@ -497,7 +480,10 @@ mod integration_tests {
         )
         .await;
 
-        assert!(result.is_err(), "Creating miniature for non-existent project should fail");
+        assert!(
+            result.is_err(),
+            "Creating miniature for non-existent project should fail"
+        );
 
         // Test 5: Invalid photo upload (non-existent miniature)
         let non_existent_miniature_id = 99999;
@@ -511,7 +497,10 @@ mod integration_tests {
         )
         .await;
 
-        assert!(result.is_err(), "Photo upload to non-existent miniature should fail");
+        assert!(
+            result.is_err(),
+            "Photo upload to non-existent miniature should fail"
+        );
 
         // Test 6: Invalid recipe creation (empty name)
         let invalid_recipe_request = CreateRecipeRequest {
@@ -523,11 +512,9 @@ mod integration_tests {
             notes: None,
         };
 
-        let result = handlers::recipes::create_recipe(
-            State(database.clone()),
-            Json(invalid_recipe_request),
-        )
-        .await;
+        let result =
+            handlers::recipes::create_recipe(State(database.clone()), Json(invalid_recipe_request))
+                .await;
 
         assert!(result.is_err(), "Empty recipe name should fail validation");
 
@@ -542,21 +529,21 @@ mod integration_tests {
         let _invalid_photo_result = PhotoRepository::create(
             &database,
             miniature.id,
-            "".to_string(), // Invalid filename
-            "".to_string(), // Invalid path
-            0,              // Invalid size
+            "".to_string(),             // Invalid filename
+            "".to_string(),             // Invalid path
+            0,                          // Invalid size
             "invalid/type".to_string(), // Invalid MIME type
         )
         .await;
 
         // Verify the miniature still exists despite photo creation failure
-        let miniature_still_exists = handlers::miniatures::get_miniature(
-            State(database.clone()),
-            Path(miniature.id),
-        )
-        .await;
+        let miniature_still_exists =
+            handlers::miniatures::get_miniature(State(database.clone()), Path(miniature.id)).await;
 
-        assert!(miniature_still_exists.is_ok(), "Miniature should still exist after photo creation failure");
+        assert!(
+            miniature_still_exists.is_ok(),
+            "Miniature should still exist after photo creation failure"
+        );
 
         // Test 8: Concurrent access simulation - multiple operations on same resource
         let project_for_concurrent_test = create_test_project(&database).await;
@@ -592,7 +579,10 @@ mod integration_tests {
         }
 
         // All concurrent operations should succeed
-        assert!(concurrent_results.iter().all(|r| r.is_ok()), "All concurrent miniature creations should succeed");
+        assert!(
+            concurrent_results.iter().all(|r| r.is_ok()),
+            "All concurrent miniature creations should succeed"
+        );
 
         // Verify all miniatures were created
         let final_miniatures = handlers::miniatures::list_miniatures(
@@ -604,7 +594,11 @@ mod integration_tests {
         .0;
 
         let miniatures_array = final_miniatures["miniatures"].as_array().unwrap();
-        assert_eq!(miniatures_array.len(), 3, "All concurrent miniatures should be created");
+        assert_eq!(
+            miniatures_array.len(),
+            3,
+            "All concurrent miniatures should be created"
+        );
     }
 
     /// Integration Test 5: Security and input validation tests
@@ -630,11 +624,9 @@ mod integration_tests {
             };
 
             // Should either fail validation or be safely escaped
-            let result = handlers::projects::create_project(
-                State(database.clone()),
-                Json(project_request),
-            )
-            .await;
+            let result =
+                handlers::projects::create_project(State(database.clone()), Json(project_request))
+                    .await;
 
             // If it succeeds, verify the malicious input was safely stored
             if let Ok(project) = result {
@@ -690,11 +682,9 @@ mod integration_tests {
                 notes: Some(format!("Notes with XSS: {}", xss_payload)),
             };
 
-            let result = handlers::recipes::create_recipe(
-                State(database.clone()),
-                Json(recipe_request),
-            )
-            .await;
+            let result =
+                handlers::recipes::create_recipe(State(database.clone()), Json(recipe_request))
+                    .await;
 
             // Should either fail validation or safely store the input
             if let Ok(recipe) = result {
@@ -750,11 +740,8 @@ mod integration_tests {
         ];
 
         for request in large_input_tests {
-            let result = handlers::projects::create_project(
-                State(database.clone()),
-                Json(request),
-            )
-            .await;
+            let result =
+                handlers::projects::create_project(State(database.clone()), Json(request)).await;
 
             // Should either fail validation due to size limits or handle gracefully
             match result {
@@ -789,22 +776,18 @@ mod integration_tests {
                 description: Some(format!("Testing unicode: {}", unicode_input)),
             };
 
-            let result = handlers::projects::create_project(
-                State(database.clone()),
-                Json(project_request),
-            )
-            .await;
+            let result =
+                handlers::projects::create_project(State(database.clone()), Json(project_request))
+                    .await;
 
             // Should handle unicode correctly
             if let Ok(project) = result {
                 assert_eq!(project.0.name, unicode_input);
                 // Verify unicode is preserved in database
-                let retrieved = handlers::projects::get_project(
-                    State(database.clone()),
-                    Path(project.0.id),
-                )
-                .await
-                .expect("Failed to retrieve unicode project");
+                let retrieved =
+                    handlers::projects::get_project(State(database.clone()), Path(project.0.id))
+                        .await
+                        .expect("Failed to retrieve unicode project");
                 assert_eq!(retrieved.0.name, unicode_input);
             }
         }
@@ -824,10 +807,14 @@ mod integration_tests {
 
             let handle = tokio::spawn(async move {
                 let _permit = sem.acquire().await.unwrap();
-                
+
                 let miniature_request = CreateMiniatureRequest {
                     name: format!("Concurrent Miniature {}", i),
-                    miniature_type: if i % 2 == 0 { MiniatureType::Troop } else { MiniatureType::Character },
+                    miniature_type: if i % 2 == 0 {
+                        MiniatureType::Troop
+                    } else {
+                        MiniatureType::Character
+                    },
                     notes: Some(format!("Created concurrently: {}", i)),
                 };
 
@@ -843,17 +830,21 @@ mod integration_tests {
 
         // Wait for all concurrent operations to complete
         let results: Vec<_> = futures::future::join_all(handles).await;
-        
+
         // Count successful operations
-        let successful_operations = results.iter().filter(|r| {
-            match r {
+        let successful_operations = results
+            .iter()
+            .filter(|r| match r {
                 Ok(Ok(_)) => true,
                 _ => false,
-            }
-        }).count();
+            })
+            .count();
 
         // Should have high success rate (allowing for some failures due to constraints)
-        assert!(successful_operations >= 45, "Most concurrent operations should succeed");
+        assert!(
+            successful_operations >= 45,
+            "Most concurrent operations should succeed"
+        );
 
         // Verify data integrity after concurrent operations
         let final_miniatures = handlers::miniatures::list_miniatures(
@@ -869,8 +860,8 @@ mod integration_tests {
 
         // Test 7: Input sanitization verification
         let sanitization_tests = vec![
-            ("  trimmed  ", "trimmed"), // Whitespace trimming
-            ("UPPERCASE", "UPPERCASE"), // Case preservation
+            ("  trimmed  ", "trimmed"),                     // Whitespace trimming
+            ("UPPERCASE", "UPPERCASE"),                     // Case preservation
             ("mixed\r\nlinebreaks\n", "mixed linebreaks "), // Line break handling
         ];
 
@@ -882,11 +873,9 @@ mod integration_tests {
                 description: None,
             };
 
-            let result = handlers::projects::create_project(
-                State(database.clone()),
-                Json(project_request),
-            )
-            .await;
+            let result =
+                handlers::projects::create_project(State(database.clone()), Json(project_request))
+                    .await;
 
             if let Ok(project) = result {
                 // Verify input was sanitized as expected
@@ -908,7 +897,10 @@ mod integration_tests {
             .expect("Failed to create test project")
     }
 
-    async fn create_test_miniature(database: &Database, project_id: i64) -> shared_types::Miniature {
+    async fn create_test_miniature(
+        database: &Database,
+        project_id: i64,
+    ) -> shared_types::Miniature {
         create_test_miniature_with_type(database, project_id, MiniatureType::Troop).await
     }
 
@@ -918,10 +910,13 @@ mod integration_tests {
         miniature_type: MiniatureType,
     ) -> shared_types::Miniature {
         let miniature_request = CreateMiniatureRequest {
-            name: format!("Test {} Miniature", match miniature_type {
-                MiniatureType::Troop => "Troop",
-                MiniatureType::Character => "Character",
-            }),
+            name: format!(
+                "Test {} Miniature",
+                match miniature_type {
+                    MiniatureType::Troop => "Troop",
+                    MiniatureType::Character => "Character",
+                }
+            ),
             miniature_type,
             notes: Some("Created for integration testing".to_string()),
         };

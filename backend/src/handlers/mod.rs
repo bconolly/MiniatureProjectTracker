@@ -1,4 +1,4 @@
-pub mod projects;
 pub mod miniatures;
-pub mod recipes;
 pub mod photos;
+pub mod projects;
+pub mod recipes;

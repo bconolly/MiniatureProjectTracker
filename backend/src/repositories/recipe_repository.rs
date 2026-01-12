@@ -1,7 +1,7 @@
-use sqlx::{Pool, Sqlite, Postgres, Row};
-use chrono::Utc;
-use shared_types::{PaintingRecipe, MiniatureType, CreateRecipeRequest, UpdateRecipeRequest};
 use crate::database::Database;
+use chrono::Utc;
+use shared_types::{CreateRecipeRequest, MiniatureType, PaintingRecipe, UpdateRecipeRequest};
+use sqlx::{Pool, Postgres, Row, Sqlite};
 
 pub struct RecipeRepository;
 
@@ -14,7 +14,7 @@ impl RecipeRepository {
         let steps_json = serde_json::to_string(&request.steps).unwrap_or_default();
         let paints_json = serde_json::to_string(&request.paints_used).unwrap_or_default();
         let techniques_json = serde_json::to_string(&request.techniques).unwrap_or_default();
-        
+
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
@@ -36,8 +36,10 @@ impl RecipeRepository {
                 .await?;
 
                 let steps: Vec<String> = serde_json::from_str(row.get("steps")).unwrap_or_default();
-                let paints_used: Vec<String> = serde_json::from_str(row.get("paints_used")).unwrap_or_default();
-                let techniques: Vec<String> = serde_json::from_str(row.get("techniques")).unwrap_or_default();
+                let paints_used: Vec<String> =
+                    serde_json::from_str(row.get("paints_used")).unwrap_or_default();
+                let techniques: Vec<String> =
+                    serde_json::from_str(row.get("techniques")).unwrap_or_default();
 
                 Ok(PaintingRecipe {
                     id: row.get("id"),
@@ -71,8 +73,10 @@ impl RecipeRepository {
                 .await?;
 
                 let steps: Vec<String> = serde_json::from_str(row.get("steps")).unwrap_or_default();
-                let paints_used: Vec<String> = serde_json::from_str(row.get("paints_used")).unwrap_or_default();
-                let techniques: Vec<String> = serde_json::from_str(row.get("techniques")).unwrap_or_default();
+                let paints_used: Vec<String> =
+                    serde_json::from_str(row.get("paints_used")).unwrap_or_default();
+                let techniques: Vec<String> =
+                    serde_json::from_str(row.get("techniques")).unwrap_or_default();
 
                 Ok(PaintingRecipe {
                     id: row.get("id"),
@@ -103,9 +107,12 @@ impl RecipeRepository {
                 .await?;
 
                 Ok(row.map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                    let steps: Vec<String> =
+                        serde_json::from_str(r.get("steps")).unwrap_or_default();
+                    let paints_used: Vec<String> =
+                        serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                    let techniques: Vec<String> =
+                        serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
                     PaintingRecipe {
                         id: r.get("id"),
@@ -129,9 +136,12 @@ impl RecipeRepository {
                 .await?;
 
                 Ok(row.map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                    let steps: Vec<String> =
+                        serde_json::from_str(r.get("steps")).unwrap_or_default();
+                    let paints_used: Vec<String> =
+                        serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                    let techniques: Vec<String> =
+                        serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
                     PaintingRecipe {
                         id: r.get("id"),
@@ -158,23 +168,29 @@ impl RecipeRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                Ok(rows
+                    .into_iter()
+                    .map(|r| {
+                        let steps: Vec<String> =
+                            serde_json::from_str(r.get("steps")).unwrap_or_default();
+                        let paints_used: Vec<String> =
+                            serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                        let techniques: Vec<String> =
+                            serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
-                    PaintingRecipe {
-                        id: r.get("id"),
-                        name: r.get("name"),
-                        miniature_type: r.get("miniature_type"),
-                        steps,
-                        paints_used,
-                        techniques,
-                        notes: r.get("notes"),
-                        created_at: r.get("created_at"),
-                        updated_at: r.get("updated_at"),
-                    }
-                }).collect())
+                        PaintingRecipe {
+                            id: r.get("id"),
+                            name: r.get("name"),
+                            miniature_type: r.get("miniature_type"),
+                            steps,
+                            paints_used,
+                            techniques,
+                            notes: r.get("notes"),
+                            created_at: r.get("created_at"),
+                            updated_at: r.get("updated_at"),
+                        }
+                    })
+                    .collect())
             }
             Database::Postgres(pool) => {
                 let rows = sqlx::query(
@@ -183,23 +199,29 @@ impl RecipeRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                Ok(rows
+                    .into_iter()
+                    .map(|r| {
+                        let steps: Vec<String> =
+                            serde_json::from_str(r.get("steps")).unwrap_or_default();
+                        let paints_used: Vec<String> =
+                            serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                        let techniques: Vec<String> =
+                            serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
-                    PaintingRecipe {
-                        id: r.get("id"),
-                        name: r.get("name"),
-                        miniature_type: r.get("miniature_type"),
-                        steps,
-                        paints_used,
-                        techniques,
-                        notes: r.get("notes"),
-                        created_at: r.get("created_at"),
-                        updated_at: r.get("updated_at"),
-                    }
-                }).collect())
+                        PaintingRecipe {
+                            id: r.get("id"),
+                            name: r.get("name"),
+                            miniature_type: r.get("miniature_type"),
+                            steps,
+                            paints_used,
+                            techniques,
+                            notes: r.get("notes"),
+                            created_at: r.get("created_at"),
+                            updated_at: r.get("updated_at"),
+                        }
+                    })
+                    .collect())
             }
         }
     }
@@ -217,23 +239,29 @@ impl RecipeRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                Ok(rows
+                    .into_iter()
+                    .map(|r| {
+                        let steps: Vec<String> =
+                            serde_json::from_str(r.get("steps")).unwrap_or_default();
+                        let paints_used: Vec<String> =
+                            serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                        let techniques: Vec<String> =
+                            serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
-                    PaintingRecipe {
-                        id: r.get("id"),
-                        name: r.get("name"),
-                        miniature_type: r.get("miniature_type"),
-                        steps,
-                        paints_used,
-                        techniques,
-                        notes: r.get("notes"),
-                        created_at: r.get("created_at"),
-                        updated_at: r.get("updated_at"),
-                    }
-                }).collect())
+                        PaintingRecipe {
+                            id: r.get("id"),
+                            name: r.get("name"),
+                            miniature_type: r.get("miniature_type"),
+                            steps,
+                            paints_used,
+                            techniques,
+                            notes: r.get("notes"),
+                            created_at: r.get("created_at"),
+                            updated_at: r.get("updated_at"),
+                        }
+                    })
+                    .collect())
             }
             Database::Postgres(pool) => {
                 let rows = sqlx::query(
@@ -243,23 +271,29 @@ impl RecipeRepository {
                 .fetch_all(pool)
                 .await?;
 
-                Ok(rows.into_iter().map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                Ok(rows
+                    .into_iter()
+                    .map(|r| {
+                        let steps: Vec<String> =
+                            serde_json::from_str(r.get("steps")).unwrap_or_default();
+                        let paints_used: Vec<String> =
+                            serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                        let techniques: Vec<String> =
+                            serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
-                    PaintingRecipe {
-                        id: r.get("id"),
-                        name: r.get("name"),
-                        miniature_type: r.get("miniature_type"),
-                        steps,
-                        paints_used,
-                        techniques,
-                        notes: r.get("notes"),
-                        created_at: r.get("created_at"),
-                        updated_at: r.get("updated_at"),
-                    }
-                }).collect())
+                        PaintingRecipe {
+                            id: r.get("id"),
+                            name: r.get("name"),
+                            miniature_type: r.get("miniature_type"),
+                            steps,
+                            paints_used,
+                            techniques,
+                            notes: r.get("notes"),
+                            created_at: r.get("created_at"),
+                            updated_at: r.get("updated_at"),
+                        }
+                    })
+                    .collect())
             }
         }
     }
@@ -308,9 +342,12 @@ impl RecipeRepository {
                 .await?;
 
                 Ok(row.map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                    let steps: Vec<String> =
+                        serde_json::from_str(r.get("steps")).unwrap_or_default();
+                    let paints_used: Vec<String> =
+                        serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                    let techniques: Vec<String> =
+                        serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
                     PaintingRecipe {
                         id: r.get("id"),
@@ -345,9 +382,12 @@ impl RecipeRepository {
                 .await?;
 
                 Ok(row.map(|r| {
-                    let steps: Vec<String> = serde_json::from_str(r.get("steps")).unwrap_or_default();
-                    let paints_used: Vec<String> = serde_json::from_str(r.get("paints_used")).unwrap_or_default();
-                    let techniques: Vec<String> = serde_json::from_str(r.get("techniques")).unwrap_or_default();
+                    let steps: Vec<String> =
+                        serde_json::from_str(r.get("steps")).unwrap_or_default();
+                    let paints_used: Vec<String> =
+                        serde_json::from_str(r.get("paints_used")).unwrap_or_default();
+                    let techniques: Vec<String> =
+                        serde_json::from_str(r.get("techniques")).unwrap_or_default();
 
                     PaintingRecipe {
                         id: r.get("id"),

@@ -92,7 +92,7 @@ jobs:
         ./scripts/migrate.sh -e $ENVIRONMENT
     
     - name: Upload deployment outputs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-outputs-${{ github.event.inputs.environment || 'dev' }}
         path: infrastructure/outputs-*.json
@@ -120,7 +120,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Download deployment outputs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: deployment-outputs-${{ github.event.inputs.environment || 'dev' }}
         path: ./outputs
