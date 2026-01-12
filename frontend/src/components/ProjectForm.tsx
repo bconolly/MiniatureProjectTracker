@@ -51,7 +51,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   } = useForm<FormData>({
     defaultValues: {
       name: project?.name || '',
-      game_system: project?.game_system || GameSystemEnum.AgeOfSignar,
+      game_system: project?.game_system || GameSystemEnum.AgeOfSigmar,
       army: project?.army || '',
       description: project?.description || '',
     },
@@ -62,7 +62,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     if (open) {
       reset({
         name: project?.name || '',
-        game_system: project?.game_system || GameSystemEnum.AgeOfSignar,
+        game_system: project?.game_system || GameSystemEnum.AgeOfSigmar,
         army: project?.army || '',
         description: project?.description || '',
       })

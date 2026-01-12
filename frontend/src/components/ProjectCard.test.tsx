@@ -18,7 +18,7 @@ vi.mock('react-router-dom', async () => {
 const mockProject: Project = {
   id: 1,
   name: 'Test Project',
-  game_system: GameSystem.AgeOfSignar,
+  game_system: GameSystem.AgeOfSigmar,
   army: 'Stormcast Eternals',
   description: 'A test project for unit testing',
   created_at: '2024-01-01T00:00:00Z',

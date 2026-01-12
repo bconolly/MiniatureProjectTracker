@@ -25,7 +25,7 @@ const mockProjects: Project[] = [
   {
     id: 1,
     name: 'Stormcast Project',
-    game_system: GameSystem.AgeOfSignar,
+    game_system: GameSystem.AgeOfSigmar,
     army: 'Stormcast Eternals',
     description: 'My first AoS project',
     created_at: '2024-01-01T00:00:00Z',
@@ -43,7 +43,7 @@ const mockProjects: Project[] = [
   {
     id: 3,
     name: 'Another Stormcast Project',
-    game_system: GameSystem.AgeOfSignar,
+    game_system: GameSystem.AgeOfSigmar,
     army: 'Stormcast Eternals',
     description: 'Second AoS project',
     created_at: '2024-01-03T00:00:00Z',

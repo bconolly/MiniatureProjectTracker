@@ -1,6 +1,6 @@
 // Shared types matching the Rust backend
 export enum GameSystem {
-  AgeOfSignar = 'age_of_sigmar',
+  AgeOfSigmar = 'age_of_sigmar',
   HorusHeresy = 'horus_heresy',
   Warhammer40k = 'warhammer_40k',
 }
@@ -144,7 +144,7 @@ export type MiniatureWithPhotos = Miniature & {
 
 // Constants for UI
 export const GAME_SYSTEM_LABELS: Record<GameSystem, string> = {
-  [GameSystem.AgeOfSignar]: 'Age of Sigmar',
+  [GameSystem.AgeOfSigmar]: 'Age of Sigmar',
   [GameSystem.HorusHeresy]: 'Horus Heresy',
   [GameSystem.Warhammer40k]: 'Warhammer 40K',
 }

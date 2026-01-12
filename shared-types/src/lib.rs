@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum GameSystem {
     AgeOfSigmar,
@@ -12,6 +13,7 @@ pub enum GameSystem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum MiniatureType {
     Troop,

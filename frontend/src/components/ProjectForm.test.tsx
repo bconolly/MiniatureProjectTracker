@@ -8,7 +8,7 @@ import { GameSystem } from '../types'
 const mockProject: Project = {
   id: 1,
   name: 'Test Project',
-  game_system: GameSystem.AgeOfSignar,
+  game_system: GameSystem.AgeOfSigmar,
   army: 'Stormcast Eternals',
   description: 'A test project',
   created_at: '2024-01-01T00:00:00Z',
@@ -91,7 +91,7 @@ describe('ProjectForm', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: 'New Project',
-        game_system: GameSystem.AgeOfSignar, // Default value
+        game_system: GameSystem.AgeOfSigmar, // Default value
         army: 'Space Marines',
         description: 'Test description',
       })
@@ -113,7 +113,7 @@ describe('ProjectForm', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: 'Project Without Description',
-        game_system: GameSystem.AgeOfSignar,
+        game_system: GameSystem.AgeOfSigmar,
         army: 'Test Army',
         description: undefined,
       })

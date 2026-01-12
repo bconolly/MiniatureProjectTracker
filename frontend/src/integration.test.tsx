@@ -94,7 +94,7 @@ describe('Integration Tests - Component Workflows', () => {
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalledWith({
           name: 'Space Marines Chapter',
-          game_system: GameSystem.AgeOfSignar, // Default value
+          game_system: GameSystem.AgeOfSigmar, // Default value
           army: 'Ultramarines',
           description: 'Complete Ultramarines army project',
         })
@@ -414,7 +414,7 @@ describe('Integration Tests - Component Workflows', () => {
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalledWith({
           name: 'Valid Project Name',
-          game_system: GameSystem.AgeOfSignar,
+          game_system: GameSystem.AgeOfSigmar,
           army: 'Valid Army',
           description: undefined,
         })
