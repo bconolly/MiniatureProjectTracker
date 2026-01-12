@@ -131,7 +131,16 @@ jobs:
         LOCAL_STORAGE_PATH: ./test_uploads
       run: |
         cd backend
-        cargo test --test integration_tests
+        cargo test --test integration_tests -- --test-threads=1
+    
+    - name: Run security-focused integration tests
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/miniature_tracker_test
+        STORAGE_TYPE: local
+        LOCAL_STORAGE_PATH: ./test_uploads
+      run: |
+        cd backend
+        cargo test test_security_and_input_validation -- --test-threads=1
 
   docker-build:
     name: Docker Build Test
@@ -181,11 +190,16 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
     
-    - name: Install cargo-audit
-      run: cargo install cargo-audit
+    - name: Install cargo-audit and cargo-deny
+      run: |
+        cargo install cargo-audit
+        cargo install cargo-deny
     
-    - name: Run security audit
+    - name: Run Rust security audit
       run: cd backend && cargo audit
+    
+    - name: Run cargo-deny (license and security checks)
+      run: cd backend && cargo deny check
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -199,3 +213,72 @@ jobs:
     
     - name: Run npm audit
       run: cd frontend && npm audit --audit-level moderate
+    
+    - name: Run Semgrep security scan
+      uses: semgrep/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/owasp-top-ten
+          p/rust
+          p/typescript
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+      continue-on-error: true
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  sast-analysis:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript, typescript
+        queries: security-and-quality
+    
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:javascript"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+        deny-licenses: GPL-2.0, GPL-3.0

@@ -1,0 +1,272 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/Cargo.toml'
+      - 'backend/Cargo.lock'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - '.github/workflows/security.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  vulnerability-scan:
+    name: Vulnerability Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          backend/target/
+        key: ${{ runner.os }}-cargo-security-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install security tools
+      run: |
+        cargo install cargo-audit --locked
+        cargo install cargo-deny --locked
+        cargo install cargo-outdated --locked
+    
+    - name: Run Rust security audit
+      run: |
+        cd backend
+        echo "::group::Cargo Audit"
+        cargo audit --json > audit-results.json || true
+        cargo audit
+        echo "::endgroup::"
+    
+    - name: Run cargo-deny checks
+      run: |
+        cd backend
+        echo "::group::Cargo Deny - Advisories"
+        cargo deny check advisories
+        echo "::endgroup::"
+        
+        echo "::group::Cargo Deny - Licenses"
+        cargo deny check licenses
+        echo "::endgroup::"
+        
+        echo "::group::Cargo Deny - Bans"
+        cargo deny check bans
+        echo "::endgroup::"
+    
+    - name: Check for outdated dependencies
+      run: |
+        cd backend
+        echo "::group::Outdated Dependencies"
+        cargo outdated --exit-code 1 || echo "Some dependencies are outdated"
+        echo "::endgroup::"
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: cd frontend && npm ci
+    
+    - name: Run npm security audit
+      run: |
+        cd frontend
+        echo "::group::NPM Audit"
+        npm audit --audit-level moderate --json > npm-audit-results.json || true
+        npm audit --audit-level moderate
+        echo "::endgroup::"
+    
+    - name: Check for outdated npm packages
+      run: |
+        cd frontend
+        echo "::group::Outdated NPM Packages"
+        npm outdated || echo "Some npm packages are outdated"
+        echo "::endgroup::"
+    
+    - name: Upload audit results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-audit-results
+        path: |
+          backend/audit-results.json
+          frontend/npm-audit-results.json
+        retention-days: 30
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Build Docker image
+      run: |
+        docker build -t miniature-tracker:security-scan .
+    
+    - name: Run Trivy vulnerability scanner on container
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'miniature-tracker:security-scan'
+        format: 'sarif'
+        output: 'trivy-container-results.sarif'
+    
+    - name: Upload Trivy container scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-container-results.sarif'
+        category: 'container-security'
+    
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+    
+    - name: Upload Trivy filesystem scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+        category: 'filesystem-security'
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Run TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  infrastructure-security:
+    name: Infrastructure Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: infrastructure/package-lock.json
+    
+    - name: Install CDK dependencies
+      run: cd infrastructure && npm ci
+    
+    - name: Run CDK security checks with cdk-nag
+      run: |
+        cd infrastructure
+        npm install @aws-cdk/aws-cdk-lib cdk-nag
+        npx cdk synth --all
+    
+    - name: Run Checkov on CDK templates
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: infrastructure/cdk.out
+        framework: cloudformation
+        output_format: sarif
+        output_file_path: checkov-results.sarif
+        soft_fail: true
+    
+    - name: Upload Checkov results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: checkov-results.sarif
+        category: 'infrastructure-security'
+
+  security-report:
+    name: Security Report
+    runs-on: ubuntu-latest
+    needs: [vulnerability-scan, container-security, secrets-scan, infrastructure-security]
+    if: always()
+    
+    steps:
+    - name: Download audit results
+      uses: actions/download-artifact@v3
+      with:
+        name: security-audit-results
+        path: ./audit-results
+      continue-on-error: true
+    
+    - name: Generate security summary
+      run: |
+        echo "# Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check job statuses
+        if [ "${{ needs.vulnerability-scan.result }}" == "success" ]; then
+          echo "✅ Vulnerability Scan: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Vulnerability Scan: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.container-security.result }}" == "success" ]; then
+          echo "✅ Container Security: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Container Security: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.secrets-scan.result }}" == "success" ]; then
+          echo "✅ Secrets Detection: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Secrets Detection: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.infrastructure-security.result }}" == "success" ]; then
+          echo "✅ Infrastructure Security: PASSED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Infrastructure Security: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Review any failed scans in the Security tab" >> $GITHUB_STEP_SUMMARY
+        echo "- Check uploaded artifacts for detailed results" >> $GITHUB_STEP_SUMMARY
+        echo "- Update dependencies if vulnerabilities are found" >> $GITHUB_STEP_SUMMARY

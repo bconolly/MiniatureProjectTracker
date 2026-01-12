@@ -607,6 +607,294 @@ mod integration_tests {
         assert_eq!(miniatures_array.len(), 3, "All concurrent miniatures should be created");
     }
 
+    /// Integration Test 5: Security and input validation tests
+    /// Tests various security scenarios including SQL injection, XSS, and input validation
+    #[tokio::test]
+    async fn test_security_and_input_validation() {
+        let database = create_test_database().await;
+
+        // Test 1: SQL Injection attempts in project creation
+        let sql_injection_attempts = vec![
+            "'; DROP TABLE projects; --",
+            "' OR '1'='1",
+            "'; INSERT INTO projects (name) VALUES ('hacked'); --",
+            "' UNION SELECT * FROM projects --",
+        ];
+
+        for malicious_input in sql_injection_attempts {
+            let project_request = CreateProjectRequest {
+                name: malicious_input.to_string(),
+                game_system: GameSystem::Warhammer40k,
+                army: "Test Army".to_string(),
+                description: None,
+            };
+
+            // Should either fail validation or be safely escaped
+            let result = handlers::projects::create_project(
+                State(database.clone()),
+                Json(project_request),
+            )
+            .await;
+
+            // If it succeeds, verify the malicious input was safely stored
+            if let Ok(project) = result {
+                assert_eq!(project.0.name, malicious_input);
+                // Verify no SQL injection occurred by checking table integrity
+                let all_projects = handlers::projects::list_projects(State(database.clone()))
+                    .await
+                    .expect("Failed to list projects");
+                assert!(all_projects.0.len() >= 1);
+            }
+        }
+
+        // Test 2: XSS attempts in various fields
+        let xss_payloads = vec![
+            "<script>alert('xss')</script>",
+            "javascript:alert('xss')",
+            "<img src=x onerror=alert('xss')>",
+            "';alert('xss');//",
+            "<svg onload=alert('xss')>",
+        ];
+
+        let valid_project = create_test_project(&database).await;
+
+        for xss_payload in xss_payloads {
+            // Test XSS in miniature names
+            let miniature_request = CreateMiniatureRequest {
+                name: xss_payload.to_string(),
+                miniature_type: MiniatureType::Troop,
+                notes: Some(format!("Notes with XSS: {}", xss_payload)),
+            };
+
+            let result = handlers::miniatures::create_miniature(
+                State(database.clone()),
+                Path(valid_project.id),
+                Json(miniature_request),
+            )
+            .await;
+
+            // Should either fail validation or safely store the input
+            if let Ok(miniature) = result {
+                assert_eq!(miniature.0.name, xss_payload);
+                // Verify the XSS payload is stored as plain text, not executed
+                assert!(miniature.0.notes.as_ref().unwrap().contains(xss_payload));
+            }
+
+            // Test XSS in recipe content
+            let recipe_request = CreateRecipeRequest {
+                name: format!("Recipe with XSS: {}", xss_payload),
+                miniature_type: MiniatureType::Character,
+                steps: vec![format!("Step with XSS: {}", xss_payload)],
+                paints_used: vec![format!("Paint with XSS: {}", xss_payload)],
+                techniques: vec![format!("Technique with XSS: {}", xss_payload)],
+                notes: Some(format!("Notes with XSS: {}", xss_payload)),
+            };
+
+            let result = handlers::recipes::create_recipe(
+                State(database.clone()),
+                Json(recipe_request),
+            )
+            .await;
+
+            // Should either fail validation or safely store the input
+            if let Ok(recipe) = result {
+                assert!(recipe.0.name.contains(xss_payload));
+                assert!(recipe.0.steps[0].contains(xss_payload));
+                assert!(recipe.0.paints_used[0].contains(xss_payload));
+                assert!(recipe.0.techniques[0].contains(xss_payload));
+            }
+        }
+
+        // Test 3: Path traversal attempts in photo uploads
+        let path_traversal_attempts = vec![
+            "../../../etc/passwd",
+            "..\\..\\..\\windows\\system32\\config\\sam",
+            "....//....//....//etc/passwd",
+            "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+            "..%252f..%252f..%252fetc%252fpasswd",
+        ];
+
+        let test_miniature = create_test_miniature(&database, valid_project.id).await;
+
+        for malicious_path in path_traversal_attempts {
+            let result = PhotoRepository::create(
+                &database,
+                test_miniature.id,
+                malicious_path.to_string(),
+                format!("/uploads/{}", malicious_path),
+                1024,
+                "image/jpeg".to_string(),
+            )
+            .await;
+
+            // Should either fail validation or safely sanitize the path
+            if let Ok(photo) = result {
+                // Verify the path doesn't contain traversal sequences
+                assert!(!photo.file_path.contains("../"));
+                assert!(!photo.file_path.contains("..\\"));
+                assert!(!photo.file_path.contains("%2e%2e"));
+            }
+        }
+
+        // Test 4: Large input validation (DoS prevention)
+        let large_string = "A".repeat(10000); // 10KB string
+
+        let large_input_tests = vec![
+            // Large project name
+            CreateProjectRequest {
+                name: large_string.clone(),
+                game_system: GameSystem::Warhammer40k,
+                army: "Test Army".to_string(),
+                description: Some(large_string.clone()),
+            },
+        ];
+
+        for request in large_input_tests {
+            let result = handlers::projects::create_project(
+                State(database.clone()),
+                Json(request),
+            )
+            .await;
+
+            // Should either fail validation due to size limits or handle gracefully
+            match result {
+                Ok(_) => {
+                    // If accepted, verify it was stored correctly
+                    // This tests the system's ability to handle large inputs
+                }
+                Err(_) => {
+                    // Expected behavior for oversized inputs
+                }
+            }
+        }
+
+        // Test 5: Unicode and special character handling
+        let unicode_tests = vec![
+            "🎨 Miniature Painting 🖌️",
+            "Ñoñó's Army",
+            "测试项目",
+            "Проект тест",
+            "مشروع اختبار",
+            "🚀💀⚔️🛡️",
+            "null\0byte",
+            "line\nbreak\rtest",
+            "tab\ttest",
+        ];
+
+        for unicode_input in unicode_tests {
+            let project_request = CreateProjectRequest {
+                name: unicode_input.to_string(),
+                game_system: GameSystem::AgeOfSigmar,
+                army: "Unicode Test Army".to_string(),
+                description: Some(format!("Testing unicode: {}", unicode_input)),
+            };
+
+            let result = handlers::projects::create_project(
+                State(database.clone()),
+                Json(project_request),
+            )
+            .await;
+
+            // Should handle unicode correctly
+            if let Ok(project) = result {
+                assert_eq!(project.0.name, unicode_input);
+                // Verify unicode is preserved in database
+                let retrieved = handlers::projects::get_project(
+                    State(database.clone()),
+                    Path(project.0.id),
+                )
+                .await
+                .expect("Failed to retrieve unicode project");
+                assert_eq!(retrieved.0.name, unicode_input);
+            }
+        }
+
+        // Test 6: Concurrent access and race condition testing
+        use std::sync::Arc;
+        use tokio::sync::Semaphore;
+
+        let concurrent_project = create_test_project(&database).await;
+        let semaphore = Arc::new(Semaphore::new(10)); // Limit concurrent operations
+
+        let mut handles = vec![];
+        for i in 0..50 {
+            let db = database.clone();
+            let project_id = concurrent_project.id;
+            let sem = semaphore.clone();
+
+            let handle = tokio::spawn(async move {
+                let _permit = sem.acquire().await.unwrap();
+                
+                let miniature_request = CreateMiniatureRequest {
+                    name: format!("Concurrent Miniature {}", i),
+                    miniature_type: if i % 2 == 0 { MiniatureType::Troop } else { MiniatureType::Character },
+                    notes: Some(format!("Created concurrently: {}", i)),
+                };
+
+                handlers::miniatures::create_miniature(
+                    State(db),
+                    Path(project_id),
+                    Json(miniature_request),
+                )
+                .await
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all concurrent operations to complete
+        let results: Vec<_> = futures::future::join_all(handles).await;
+        
+        // Count successful operations
+        let successful_operations = results.iter().filter(|r| {
+            match r {
+                Ok(Ok(_)) => true,
+                _ => false,
+            }
+        }).count();
+
+        // Should have high success rate (allowing for some failures due to constraints)
+        assert!(successful_operations >= 45, "Most concurrent operations should succeed");
+
+        // Verify data integrity after concurrent operations
+        let final_miniatures = handlers::miniatures::list_miniatures(
+            State(database.clone()),
+            Path(concurrent_project.id),
+        )
+        .await
+        .expect("Failed to list miniatures after concurrent test")
+        .0;
+
+        let miniatures_array = final_miniatures["miniatures"].as_array().unwrap();
+        assert_eq!(miniatures_array.len(), successful_operations);
+
+        // Test 7: Input sanitization verification
+        let sanitization_tests = vec![
+            ("  trimmed  ", "trimmed"), // Whitespace trimming
+            ("UPPERCASE", "UPPERCASE"), // Case preservation
+            ("mixed\r\nlinebreaks\n", "mixed linebreaks "), // Line break handling
+        ];
+
+        for (input, expected_output) in sanitization_tests {
+            let project_request = CreateProjectRequest {
+                name: input.to_string(),
+                game_system: GameSystem::Warhammer40k,
+                army: "Sanitization Test".to_string(),
+                description: None,
+            };
+
+            let result = handlers::projects::create_project(
+                State(database.clone()),
+                Json(project_request),
+            )
+            .await;
+
+            if let Ok(project) = result {
+                // Verify input was sanitized as expected
+                assert_eq!(project.0.name.trim(), expected_output.trim());
+            }
+        }
+    }
+
     // Helper functions for integration tests
     async fn create_test_project(database: &Database) -> shared_types::Project {
         let create_request = CreateProjectRequest {

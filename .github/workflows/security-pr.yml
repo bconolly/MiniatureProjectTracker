@@ -1,0 +1,262 @@
+name: Security PR Check
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          backend/target/
+        key: ${{ runner.os }}-cargo-security-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install security tools
+      run: |
+        cargo install cargo-audit --locked
+        cargo install cargo-deny --locked
+    
+    - name: Run Rust security audit
+      id: rust-audit
+      run: |
+        cd backend
+        echo "## Rust Security Audit" >> $GITHUB_STEP_SUMMARY
+        if cargo audit --json > audit-results.json; then
+          echo "✅ No known vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          echo "rust_audit_status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Security vulnerabilities detected" >> $GITHUB_STEP_SUMMARY
+          echo "rust_audit_status=failure" >> $GITHUB_OUTPUT
+          cargo audit >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    - name: Run cargo-deny checks
+      id: cargo-deny
+      run: |
+        cd backend
+        echo "## Cargo Deny Results" >> $GITHUB_STEP_SUMMARY
+        
+        # Check advisories
+        if cargo deny check advisories; then
+          echo "✅ Advisory check passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Advisory check failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Check licenses
+        if cargo deny check licenses; then
+          echo "✅ License check passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ License check failed" >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: cd frontend && npm ci
+    
+    - name: Run npm security audit
+      id: npm-audit
+      run: |
+        cd frontend
+        echo "## NPM Security Audit" >> $GITHUB_STEP_SUMMARY
+        if npm audit --audit-level moderate --json > npm-audit-results.json; then
+          echo "✅ No moderate or higher vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          echo "npm_audit_status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Security vulnerabilities detected" >> $GITHUB_STEP_SUMMARY
+          echo "npm_audit_status=failure" >> $GITHUB_OUTPUT
+          npm audit --audit-level moderate >> $GITHUB_STEP_SUMMARY || true
+        fi
+    
+    - name: Run Semgrep security scan
+      uses: semgrep/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/owasp-top-ten
+          p/rust
+          p/typescript
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+      continue-on-error: true
+    
+    - name: Run TruffleHog secrets scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+      continue-on-error: true
+    
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'HIGH,CRITICAL'
+      continue-on-error: true
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: 'pr-security-scan'
+    
+    - name: Comment PR with security summary
+      uses: actions/github-script@v7
+      if: always()
+      with:
+        script: |
+          const rustAuditStatus = '${{ steps.rust-audit.outputs.rust_audit_status }}';
+          const npmAuditStatus = '${{ steps.npm-audit.outputs.npm_audit_status }}';
+          
+          let comment = '## 🔒 Security Check Results\n\n';
+          
+          // Rust audit results
+          if (rustAuditStatus === 'success') {
+            comment += '✅ **Rust Security Audit**: No known vulnerabilities\n';
+          } else {
+            comment += '❌ **Rust Security Audit**: Vulnerabilities detected - please review\n';
+          }
+          
+          // NPM audit results
+          if (npmAuditStatus === 'success') {
+            comment += '✅ **NPM Security Audit**: No moderate+ vulnerabilities\n';
+          } else {
+            comment += '❌ **NPM Security Audit**: Vulnerabilities detected - please review\n';
+          }
+          
+          comment += '\n### Additional Scans\n';
+          comment += '- 🔍 **Semgrep**: Static analysis for security patterns\n';
+          comment += '- 🔑 **TruffleHog**: Secrets detection in code changes\n';
+          comment += '- 🛡️ **Trivy**: Filesystem vulnerability scan\n';
+          comment += '\nCheck the Security tab for detailed results of all scans.\n';
+          
+          // Add security best practices reminder
+          comment += '\n### 📋 Security Checklist\n';
+          comment += '- [ ] Input validation implemented for new endpoints\n';
+          comment += '- [ ] SQL queries use parameterized statements\n';
+          comment += '- [ ] User input is sanitized for output\n';
+          comment += '- [ ] File uploads are validated and secured\n';
+          comment += '- [ ] Error messages don\'t leak sensitive information\n';
+          comment += '- [ ] New dependencies are from trusted sources\n';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unicode-DFS-2016, CC0-1.0
+        deny-licenses: GPL-2.0, GPL-3.0, AGPL-1.0, AGPL-3.0, LGPL-2.0, LGPL-2.1, LGPL-3.0
+        comment-summary-in-pr: true
+
+  security-integration-test:
+    name: Security Integration Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: miniature_tracker_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          backend/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Setup test database
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/miniature_tracker_test
+      run: |
+        cd backend
+        cargo run --bin miniature-painting-tracker-backend -- --migrate
+    
+    - name: Run security-focused integration tests
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/miniature_tracker_test
+        STORAGE_TYPE: local
+        LOCAL_STORAGE_PATH: ./test_uploads
+      run: |
+        cd backend
+        echo "## Security Integration Test Results" >> $GITHUB_STEP_SUMMARY
+        if cargo test test_security_and_input_validation -- --test-threads=1; then
+          echo "✅ All security integration tests passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Some security integration tests failed" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
