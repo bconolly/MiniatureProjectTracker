@@ -371,11 +371,11 @@ mod integration_tests {
         let project = create_test_project(&database).await;
 
         // Create troop miniature
-        let troop_miniature =
+        let _troop_miniature =
             create_test_miniature_with_type(&database, project.id, MiniatureType::Troop).await;
 
         // Create character miniature
-        let character_miniature =
+        let _character_miniature =
             create_test_miniature_with_type(&database, project.id, MiniatureType::Character).await;
 
         // Step 5: Verify appropriate recipes can be found for each miniature type
@@ -635,7 +635,7 @@ mod integration_tests {
                 let all_projects = handlers::projects::list_projects(State(database.clone()))
                     .await
                     .expect("Failed to list projects");
-                assert!(all_projects.0.len() >= 1);
+                assert!(all_projects.0.as_array().unwrap().len() >= 1);
             }
         }
 
