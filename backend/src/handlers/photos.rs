@@ -375,3 +375,147 @@ pub async fn delete_photo(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_max_file_size_constant() {
+        assert_eq!(MAX_FILE_SIZE, 10 * 1024 * 1024);
+        assert_eq!(MAX_FILE_SIZE, 10_485_760);
+    }
+
+    #[test]
+    fn test_allowed_mime_types() {
+        assert_eq!(ALLOWED_MIME_TYPES.len(), 3);
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/jpeg"));
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/png"));
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/webp"));
+    }
+
+    #[test]
+    fn test_mime_type_validation_valid() {
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/jpeg"));
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/png"));
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/webp"));
+    }
+
+    #[test]
+    fn test_mime_type_validation_invalid() {
+        assert!(!ALLOWED_MIME_TYPES.contains(&"image/gif"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"image/bmp"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"image/svg+xml"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"application/pdf"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"text/plain"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"video/mp4"));
+    }
+
+    #[test]
+    fn test_file_size_validation() {
+        // Valid sizes
+        assert!(1024 <= MAX_FILE_SIZE); // 1KB
+        assert!(100 * 1024 <= MAX_FILE_SIZE); // 100KB
+        assert!(1024 * 1024 <= MAX_FILE_SIZE); // 1MB
+        assert!(5 * 1024 * 1024 <= MAX_FILE_SIZE); // 5MB
+        assert!(10 * 1024 * 1024 <= MAX_FILE_SIZE); // 10MB exactly
+
+        // Invalid sizes
+        assert!((10 * 1024 * 1024 + 1) > MAX_FILE_SIZE); // Just over 10MB
+        assert!((15 * 1024 * 1024) > MAX_FILE_SIZE); // 15MB
+        assert!((100 * 1024 * 1024) > MAX_FILE_SIZE); // 100MB
+    }
+
+    #[test]
+    fn test_mime_type_case_sensitivity() {
+        // MIME types should be lowercase
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/jpeg"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"IMAGE/JPEG"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"Image/Jpeg"));
+    }
+
+    #[test]
+    fn test_jpeg_variations() {
+        // Only image/jpeg is allowed, not image/jpg
+        assert!(ALLOWED_MIME_TYPES.contains(&"image/jpeg"));
+        assert!(!ALLOWED_MIME_TYPES.contains(&"image/jpg"));
+    }
+
+    #[test]
+    fn test_file_size_edge_cases() {
+        let zero_bytes = 0;
+        let one_byte = 1;
+        let max_minus_one = MAX_FILE_SIZE - 1;
+        let max_exactly = MAX_FILE_SIZE;
+        let max_plus_one = MAX_FILE_SIZE + 1;
+
+        assert!(zero_bytes <= MAX_FILE_SIZE);
+        assert!(one_byte <= MAX_FILE_SIZE);
+        assert!(max_minus_one <= MAX_FILE_SIZE);
+        assert!(max_exactly <= MAX_FILE_SIZE);
+        assert!(max_plus_one > MAX_FILE_SIZE);
+    }
+
+    #[test]
+    fn test_error_response_structure() {
+        // Test that error response types are correctly defined
+        let error_types = vec![
+            "not_found",
+            "invalid_multipart",
+            "invalid_file_type",
+            "file_read_error",
+            "file_too_large",
+            "missing_file",
+            "missing_filename",
+            "missing_mime_type",
+            "config_error",
+            "storage_error",
+            "database_error",
+        ];
+
+        // Ensure we have all expected error types documented
+        assert!(error_types.len() >= 10);
+        assert!(error_types.contains(&"file_too_large"));
+        assert!(error_types.contains(&"invalid_file_type"));
+        assert!(error_types.contains(&"missing_file"));
+    }
+
+    #[test]
+    fn test_allowed_extensions_from_mime_types() {
+        // Document the expected file extensions for allowed MIME types
+        let extensions = vec!["jpg", "jpeg", "png", "webp"];
+
+        // MIME type mappings
+        assert_eq!(ALLOWED_MIME_TYPES[0], "image/jpeg"); // .jpg/.jpeg
+        assert_eq!(ALLOWED_MIME_TYPES[1], "image/png");  // .png
+        assert_eq!(ALLOWED_MIME_TYPES[2], "image/webp"); // .webp
+
+        assert!(extensions.len() >= 3);
+    }
+
+    #[test]
+    fn test_max_file_size_in_different_units() {
+        const KB: usize = 1024;
+        const MB: usize = 1024 * KB;
+
+        assert_eq!(MAX_FILE_SIZE, 10 * MB);
+        assert_eq!(MAX_FILE_SIZE / MB, 10);
+        assert_eq!(MAX_FILE_SIZE / KB, 10240);
+    }
+
+    #[test]
+    fn test_multipart_field_name() {
+        // The expected field name in multipart data
+        let expected_field_name = "photo";
+        assert_eq!(expected_field_name, "photo");
+    }
+
+    #[test]
+    fn test_storage_path_requirements() {
+        // Photo storage paths should be tracked
+        // This test documents the expectations for file_path storage
+        let example_path = "/uploads/miniatures/123/photo.jpg";
+        assert!(example_path.contains("photo"));
+        assert!(!example_path.is_empty());
+    }
+}

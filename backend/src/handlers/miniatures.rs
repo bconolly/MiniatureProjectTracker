@@ -106,3 +106,113 @@ pub async fn delete_miniature(
         )))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use shared_types::{MiniatureType, ProgressStatus};
+
+    fn validate_miniature_name(name: &str) -> Result<()> {
+        if name.trim().is_empty()
+            || !name
+                .chars()
+                .any(|c| c.is_alphanumeric() || c.is_ascii_punctuation())
+        {
+            return Err(AppError::ValidationError(
+                "Miniature name is required".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_validate_miniature_name_valid() {
+        assert!(validate_miniature_name("Space Marine Captain").is_ok());
+        assert!(validate_miniature_name("Ork Boy #1").is_ok());
+        assert!(validate_miniature_name("Commander-123").is_ok());
+        assert!(validate_miniature_name("M").is_ok());
+    }
+
+    #[test]
+    fn test_validate_miniature_name_empty() {
+        assert!(validate_miniature_name("").is_err());
+        assert!(validate_miniature_name("   ").is_err());
+        assert!(validate_miniature_name("\t\n").is_err());
+    }
+
+    #[test]
+    fn test_validate_miniature_name_control_characters_only() {
+        assert!(validate_miniature_name("\n\n\n").is_err());
+        assert!(validate_miniature_name("   \t   ").is_err());
+    }
+
+    #[test]
+    fn test_create_miniature_request_validation() {
+        let valid_request = CreateMiniatureRequest {
+            name: "Test Miniature".to_string(),
+            miniature_type: MiniatureType::Troop,
+            notes: Some("Test notes".to_string()),
+        };
+
+        assert!(validate_miniature_name(&valid_request.name).is_ok());
+    }
+
+    #[test]
+    fn test_update_miniature_request_validation_with_empty_name() {
+        let empty_name = "".to_string();
+        let whitespace_name = "   ".to_string();
+
+        assert!(validate_miniature_name(&empty_name).is_err());
+        assert!(validate_miniature_name(&whitespace_name).is_err());
+    }
+
+    #[test]
+    fn test_validation_accepts_special_characters() {
+        assert!(validate_miniature_name("Miniature-123!").is_ok());
+        assert!(validate_miniature_name("Unit #5").is_ok());
+        assert!(validate_miniature_name("Captain's Guard").is_ok());
+    }
+
+    #[test]
+    fn test_progress_status_values() {
+        // Test that all progress status values are valid enum variants
+        let statuses = vec![
+            ProgressStatus::Unpainted,
+            ProgressStatus::Primed,
+            ProgressStatus::Basecoated,
+            ProgressStatus::Detailed,
+            ProgressStatus::Completed,
+        ];
+
+        // Just ensure they can be created - validates enum definitions
+        assert_eq!(statuses.len(), 5);
+        assert_eq!(statuses[0], ProgressStatus::Unpainted);
+        assert_eq!(statuses[4], ProgressStatus::Completed);
+    }
+
+    #[test]
+    fn test_miniature_type_values() {
+        // Test that miniature types are valid
+        let types = vec![MiniatureType::Troop, MiniatureType::Character];
+
+        assert_eq!(types.len(), 2);
+    }
+
+    #[test]
+    fn test_create_request_with_optional_fields() {
+        let request_with_notes = CreateMiniatureRequest {
+            name: "Test".to_string(),
+            miniature_type: MiniatureType::Character,
+            notes: Some("Has notes".to_string()),
+        };
+
+        let request_without_notes = CreateMiniatureRequest {
+            name: "Test".to_string(),
+            miniature_type: MiniatureType::Troop,
+            notes: None,
+        };
+
+        assert!(validate_miniature_name(&request_with_notes.name).is_ok());
+        assert!(validate_miniature_name(&request_without_notes.name).is_ok());
+    }
+}

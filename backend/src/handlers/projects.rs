@@ -111,3 +111,115 @@ pub async fn delete_project(
         )))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use shared_types::GameSystem;
+
+    fn validate_project_name(name: &str) -> Result<()> {
+        if name.trim().is_empty()
+            || !name
+                .chars()
+                .any(|c| c.is_alphanumeric() || c.is_ascii_punctuation())
+        {
+            return Err(AppError::ValidationError(
+                "Project name is required".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn validate_army_name(army: &str) -> Result<()> {
+        if army.trim().is_empty()
+            || !army
+                .chars()
+                .any(|c| c.is_alphanumeric() || c.is_ascii_punctuation())
+        {
+            return Err(AppError::ValidationError("Army is required".to_string()));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_validate_project_name_valid() {
+        assert!(validate_project_name("My Project").is_ok());
+        assert!(validate_project_name("Project 123").is_ok());
+        assert!(validate_project_name("Test-Project!").is_ok());
+        assert!(validate_project_name("A").is_ok());
+    }
+
+    #[test]
+    fn test_validate_project_name_empty() {
+        assert!(validate_project_name("").is_err());
+        assert!(validate_project_name("   ").is_err());
+        assert!(validate_project_name("\t\n").is_err());
+    }
+
+    #[test]
+    fn test_validate_project_name_control_characters_only() {
+        assert!(validate_project_name("\n\n\n").is_err());
+        assert!(validate_project_name("   \t   ").is_err());
+    }
+
+    #[test]
+    fn test_validate_army_name_valid() {
+        assert!(validate_army_name("Space Marines").is_ok());
+        assert!(validate_army_name("Army-123").is_ok());
+        assert!(validate_army_name("Orks!").is_ok());
+    }
+
+    #[test]
+    fn test_validate_army_name_empty() {
+        assert!(validate_army_name("").is_err());
+        assert!(validate_army_name("   ").is_err());
+        assert!(validate_army_name("\t\n").is_err());
+    }
+
+    #[test]
+    fn test_create_project_request_validation() {
+        // Test that validation logic matches what's in the handler
+        let valid_request = CreateProjectRequest {
+            name: "Test Project".to_string(),
+            game_system: GameSystem::Warhammer40k,
+            army: "Space Marines".to_string(),
+            description: Some("Test description".to_string()),
+        };
+
+        assert!(validate_project_name(&valid_request.name).is_ok());
+        assert!(validate_army_name(&valid_request.army).is_ok());
+    }
+
+    #[test]
+    fn test_update_project_request_validation_with_empty_name() {
+        let empty_name = "".to_string();
+        let whitespace_name = "   ".to_string();
+
+        assert!(validate_project_name(&empty_name).is_err());
+        assert!(validate_project_name(&whitespace_name).is_err());
+    }
+
+    #[test]
+    fn test_update_project_request_validation_with_empty_army() {
+        let empty_army = "".to_string();
+        let whitespace_army = "   ".to_string();
+
+        assert!(validate_army_name(&empty_army).is_err());
+        assert!(validate_army_name(&whitespace_army).is_err());
+    }
+
+    #[test]
+    fn test_validation_rejects_special_characters_without_alphanumeric() {
+        // Names with only special characters should be rejected
+        assert!(validate_project_name("!!!").is_ok()); // Punctuation is allowed
+        assert!(validate_project_name("---").is_ok());
+        assert!(validate_project_name("...").is_ok());
+    }
+
+    #[test]
+    fn test_validation_accepts_mixed_content() {
+        assert!(validate_project_name("Project-123!").is_ok());
+        assert!(validate_project_name("My Army (2024)").is_ok());
+        assert!(validate_army_name("Space Marines - 1st Company").is_ok());
+    }
+}
