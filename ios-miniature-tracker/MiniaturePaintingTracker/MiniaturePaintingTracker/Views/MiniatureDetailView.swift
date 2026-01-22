@@ -100,10 +100,9 @@ struct MiniatureDetailView: View {
                 savePhoto(image)
             }
         }
-        .sheet(isPresented: $showingPhotoDetail) {
-            if let photo = selectedPhoto {
-                PhotoDetailView(photo: photo)
-            }
+        .fullScreenCover(item: $selectedPhoto) { photo in
+            PhotoDetailView(photo: photo)
+                .environment(\.managedObjectContext, viewContext)
         }
     }
     
@@ -246,7 +245,6 @@ struct MiniatureDetailView: View {
                         PhotoThumbnailView(photo: photo)
                             .onTapGesture {
                                 selectedPhoto = photo
-                                showingPhotoDetail = true
                             }
                     }
                 }
@@ -405,7 +403,9 @@ struct PhotoThumbnailView: View {
             }
         }
         .frame(height: 100)
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
     }
 }
 
@@ -417,34 +417,37 @@ struct PhotoDetailView: View {
     
     let photo: Photo
     @State private var showingDeleteAlert = false
+    @State private var loadedImage: UIImage?
     
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                ZStack {
-                    Color.black.ignoresSafeArea()
-                    
-                    if photo.fileExists, let uiImage = UIImage(contentsOfFile: photo.fileURL.path) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                    } else {
-                        VStack(spacing: 16) {
-                            Image(systemName: "photo.badge.exclamationmark")
-                                .font(.system(size: 60))
-                                .foregroundStyle(.secondary)
-                            Text("Photo not found")
-                                .foregroundStyle(.secondary)
-                        }
+            VStack {
+                Spacer()
+                
+                if let image = loadedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding()
+                } else {
+                    VStack(spacing: 16) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.gray)
+                        Text("Photo not found")
+                            .foregroundStyle(.gray)
+                        Text(photo.filePath ?? "No path")
+                            .font(.caption2)
+                            .foregroundStyle(.gray)
                     }
                 }
+                
+                Spacer()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
             .navigationTitle("Photo")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.black.opacity(0.8), for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
@@ -452,8 +455,8 @@ struct PhotoDetailView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .destructiveAction) {
-                    Button {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(role: .destructive) {
                         showingDeleteAlert = true
                     } label: {
                         Image(systemName: "trash")
@@ -467,16 +470,32 @@ struct PhotoDetailView: View {
                     deletePhoto()
                 }
             } message: {
-                Text("This photo will be permanently deleted. This action cannot be undone.")
+                Text("This photo will be permanently deleted.")
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .onAppear {
+            loadImage()
+        }
+    }
+    
+    private func loadImage() {
+        guard let filePath = photo.filePath else { return }
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileURL = documentsPath.appendingPathComponent(filePath)
+        
+        if FileManager.default.fileExists(atPath: fileURL.path),
+           let image = UIImage(contentsOfFile: fileURL.path) {
+            loadedImage = image
+        }
     }
     
     private func deletePhoto() {
         // Delete file from disk
-        try? photo.deleteFile()
+        if let filePath = photo.filePath {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent(filePath)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
         
         viewContext.delete(photo)
         
