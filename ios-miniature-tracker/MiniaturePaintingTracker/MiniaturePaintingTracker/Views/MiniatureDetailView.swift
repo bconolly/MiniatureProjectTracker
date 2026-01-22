@@ -420,25 +420,39 @@ struct PhotoDetailView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
-                if photo.fileExists, let uiImage = UIImage(contentsOfFile: photo.fileURL.path) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
+            GeometryReader { geometry in
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    
+                    if photo.fileExists, let uiImage = UIImage(contentsOfFile: photo.fileURL.path) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                    } else {
+                        VStack(spacing: 16) {
+                            Image(systemName: "photo.badge.exclamationmark")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.secondary)
+                            Text("Photo not found")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
+            .navigationTitle("Photo")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Color.black.opacity(0.8), for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundStyle(.white)
                 }
                 
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .destructiveAction) {
                     Button {
                         showingDeleteAlert = true
                     } label: {
@@ -452,8 +466,12 @@ struct PhotoDetailView: View {
                 Button("Delete", role: .destructive) {
                     deletePhoto()
                 }
+            } message: {
+                Text("This photo will be permanently deleted. This action cannot be undone.")
             }
         }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
     
     private func deletePhoto() {
