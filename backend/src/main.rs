@@ -104,6 +104,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get(handlers::photos::list_photos),
         )
         .route("/api/photos/:id", delete(handlers::photos::delete_photo))
+        // Miniature-Recipe linking routes
+        .route(
+            "/api/miniatures/:id/recipes",
+            get(handlers::miniature_recipes::get_miniature_recipes),
+        )
+        .route(
+            "/api/miniatures/:miniature_id/recipes/:recipe_id",
+            post(handlers::miniature_recipes::link_recipe_to_miniature),
+        )
+        .route(
+            "/api/miniatures/:miniature_id/recipes/:recipe_id",
+            delete(handlers::miniature_recipes::unlink_recipe_from_miniature),
+        )
+        .route(
+            "/api/recipes/:id/usage",
+            get(handlers::miniature_recipes::get_recipe_usage_count),
+        )
         .layer(
             ServiceBuilder::new()
                 // Add request ID for tracing

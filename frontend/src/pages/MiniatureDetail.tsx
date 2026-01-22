@@ -28,7 +28,7 @@ import {
 } from '@mui/icons-material'
 import { useApi } from '../hooks/useApi'
 import { miniatureApi, photoApi, projectApi } from '../api/client'
-import { LoadingSpinner, ProgressTracker } from '../components'
+import { LoadingSpinner, ProgressTracker, RecipeLink } from '../components'
 import MiniatureForm from '../components/MiniatureForm'
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog'
 import PhotoUpload from '../components/PhotoUpload'
@@ -298,6 +298,11 @@ function MiniatureDetail() {
             showLabels={true}
             variant="stepper"
           />
+
+          {/* Linked Recipes */}
+          <Paper sx={{ p: 3, mt: 3 }}>
+            <RecipeLink miniatureId={miniature.id} />
+          </Paper>
         </Grid>
 
         {/* Right Column - Photos */}

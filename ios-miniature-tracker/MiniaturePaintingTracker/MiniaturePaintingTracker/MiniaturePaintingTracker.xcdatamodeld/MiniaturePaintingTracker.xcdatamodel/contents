@@ -10,6 +10,7 @@
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="photos" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Photo" inverseName="miniature" inverseEntity="Photo"/>
         <relationship name="project" optional="NO" maxCount="1" deletionRule="Nullify" destinationEntity="Project" inverseName="miniatures" inverseEntity="Project"/>
+        <relationship name="recipes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Recipe" inverseName="miniatures" inverseEntity="Recipe"/>
     </entity>
     <entity name="Photo" representedClassName="Photo" syncable="YES" codeGenerationType="class">
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
@@ -40,5 +41,6 @@
         <attribute name="stepsData" optional="NO" attributeType="Binary"/>
         <attribute name="techniquesData" optional="NO" attributeType="Binary"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="miniatures" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Miniature" inverseName="recipes" inverseEntity="Miniature"/>
     </entity>
 </model>

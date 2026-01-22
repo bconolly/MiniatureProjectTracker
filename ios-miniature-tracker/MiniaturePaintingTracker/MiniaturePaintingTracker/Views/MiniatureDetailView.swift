@@ -33,6 +33,9 @@ struct MiniatureDetailView: View {
                 // Progress Tracker
                 progressSection
                 
+                // Linked Recipes
+                RecipeLinkSection(miniature: miniature)
+                
                 // Photo Gallery
                 photoSection
                 

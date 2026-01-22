@@ -205,10 +205,17 @@ struct ProjectRowView: View {
                 
                 Spacer()
                 
-                // Progress indicator
-                ProgressView(value: project.completionPercentage)
-                    .frame(width: 60)
-                    .tint(.green)
+                // Progress indicator with percentage
+                HStack(spacing: 6) {
+                    Text("\(Int(project.completionPercentage * 100))%")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(project.completionPercentage == 1.0 ? .green : .secondary)
+                    
+                    ProgressView(value: project.completionPercentage)
+                        .frame(width: 60)
+                        .tint(project.completionPercentage == 1.0 ? .green : .blue)
+                }
             }
         }
         .padding(.vertical, 4)

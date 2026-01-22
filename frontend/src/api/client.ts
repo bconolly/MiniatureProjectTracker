@@ -98,6 +98,22 @@ export const recipeApi = {
   update: (id: number, data: UpdateRecipeRequest) => 
     apiClient.put<PaintingRecipe>(`/recipes/${id}`, data),
   delete: (id: number) => apiClient.delete(`/recipes/${id}`),
+  getUsageCount: async (id: number) => {
+    const response = await apiClient.get<{ recipe_id: number; miniature_count: number }>(`/recipes/${id}/usage`)
+    return response.data.miniature_count
+  },
+}
+
+// Miniature Recipe Linking API
+export const miniatureRecipeApi = {
+  getRecipes: async (miniatureId: number) => {
+    const response = await apiClient.get<{ recipes: PaintingRecipe[] }>(`/miniatures/${miniatureId}/recipes`)
+    return response.data.recipes
+  },
+  linkRecipe: (miniatureId: number, recipeId: number) =>
+    apiClient.post(`/miniatures/${miniatureId}/recipes/${recipeId}`),
+  unlinkRecipe: (miniatureId: number, recipeId: number) =>
+    apiClient.delete(`/miniatures/${miniatureId}/recipes/${recipeId}`),
 }
 
 // Photo API
