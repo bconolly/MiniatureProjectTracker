@@ -1,5 +1,4 @@
 use crate::database::Database;
-use chrono::{DateTime, Utc};
 use shared_types::PaintingRecipe;
 use sqlx::Row;
 
@@ -167,6 +166,7 @@ impl MiniatureRecipeRepository {
     }
 
     /// Get all recipe IDs linked to a miniature
+    #[allow(dead_code)]
     pub async fn get_recipe_ids_for_miniature(
         database: &Database,
         miniature_id: i64,

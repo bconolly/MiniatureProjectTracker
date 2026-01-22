@@ -13,7 +13,6 @@ use axum::{
     response::Json,
 };
 use serde_json::Value;
-use shared_types::PaintingRecipe;
 
 /// Get all recipes linked to a miniature
 pub async fn get_miniature_recipes(

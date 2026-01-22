@@ -57,7 +57,7 @@ export default function RecipeLink({ miniatureId }: RecipeLinkProps) {
   const fetchAllRecipes = async () => {
     try {
       const recipes = await recipeApi.list()
-      setAllRecipes(recipes)
+      setAllRecipes(recipes.data)
     } catch (err) {
       console.error('Failed to load recipes:', err)
     }
