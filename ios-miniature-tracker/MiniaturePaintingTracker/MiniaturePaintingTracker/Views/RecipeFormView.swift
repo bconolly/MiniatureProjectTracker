@@ -29,9 +29,21 @@ struct RecipeFormView: View {
     @State private var newStep = ""
     @State private var newPaint = ""
     @State private var newTechnique = ""
-    
+
     @State private var showingValidationError = false
     @State private var validationMessage = ""
+
+    // Editing state
+    @State private var editingStepIndex: Int? = nil
+    @State private var editingPaintIndex: Int? = nil
+    @State private var editingTechniqueIndex: Int? = nil
+    @State private var editText = ""
+    @State private var showingEditAlert = false
+
+    enum EditingType {
+        case step, paint, technique
+    }
+    @State private var editingType: EditingType = .step
     
     var isEditing: Bool {
         if case .edit = mode { return true }
@@ -65,6 +77,17 @@ struct RecipeFormView: View {
                                 .foregroundStyle(.blue)
                                 .frame(width: 30)
                             Text(step)
+                            Spacer()
+                            Image(systemName: "pencil")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            editingType = .step
+                            editingStepIndex = index
+                            editText = step
+                            showingEditAlert = true
                         }
                     }
                     .onDelete { indexSet in
@@ -96,11 +119,17 @@ struct RecipeFormView: View {
                 // Paints Section
                 Section {
                     FlowLayout(spacing: 8) {
-                        ForEach(paintsUsed, id: \.self) { paint in
+                        ForEach(Array(paintsUsed.enumerated()), id: \.offset) { index, paint in
                             HStack(spacing: 4) {
                                 Text(paint)
+                                    .onTapGesture {
+                                        editingType = .paint
+                                        editingPaintIndex = index
+                                        editText = paint
+                                        showingEditAlert = true
+                                    }
                                 Button {
-                                    paintsUsed.removeAll { $0 == paint }
+                                    paintsUsed.remove(at: index)
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.caption)
@@ -131,11 +160,22 @@ struct RecipeFormView: View {
                 
                 // Techniques Section
                 Section {
-                    ForEach(techniques, id: \.self) { technique in
+                    ForEach(Array(techniques.enumerated()), id: \.offset) { index, technique in
                         HStack {
                             Image(systemName: "paintbrush.pointed.fill")
                                 .foregroundStyle(.orange)
                             Text(technique)
+                            Spacer()
+                            Image(systemName: "pencil")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            editingType = .technique
+                            editingTechniqueIndex = index
+                            editText = technique
+                            showingEditAlert = true
                         }
                     }
                     .onDelete { indexSet in
@@ -186,7 +226,66 @@ struct RecipeFormView: View {
             } message: {
                 Text(validationMessage)
             }
+            .alert(editAlertTitle, isPresented: $showingEditAlert) {
+                TextField("Enter text", text: $editText)
+                Button("Cancel", role: .cancel) {
+                    clearEditingState()
+                }
+                Button("Save") {
+                    saveEditedItem()
+                }
+            } message: {
+                Text("Edit the text below")
+            }
         }
+    }
+
+    private var editAlertTitle: String {
+        switch editingType {
+        case .step: return "Edit Step"
+        case .paint: return "Edit Paint"
+        case .technique: return "Edit Technique"
+        }
+    }
+
+    private func clearEditingState() {
+        editingStepIndex = nil
+        editingPaintIndex = nil
+        editingTechniqueIndex = nil
+        editText = ""
+    }
+
+    private func saveEditedItem() {
+        let trimmed = editText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            clearEditingState()
+            return
+        }
+
+        switch editingType {
+        case .step:
+            if let index = editingStepIndex, index < steps.count {
+                steps[index] = trimmed
+            }
+        case .paint:
+            if let index = editingPaintIndex, index < paintsUsed.count {
+                // Check for duplicates (excluding current item)
+                let otherPaints = paintsUsed.enumerated().filter { $0.offset != index }.map { $0.element }
+                if !otherPaints.contains(trimmed) {
+                    paintsUsed[index] = trimmed
+                }
+            }
+        case .technique:
+            if let index = editingTechniqueIndex, index < techniques.count {
+                // Check for duplicates (excluding current item)
+                let otherTechniques = techniques.enumerated().filter { $0.offset != index }.map { $0.element }
+                if !otherTechniques.contains(trimmed) {
+                    techniques[index] = trimmed
+                }
+            }
+        }
+
+        clearEditingState()
     }
     
     private func loadExistingData() {
