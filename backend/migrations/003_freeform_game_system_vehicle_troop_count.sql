@@ -1,11 +1,12 @@
 -- Migration 003:
 --  1. game_system becomes free-form (drop CHECK constraint on projects)
---  2. add 'vehicle' to allowed miniature_type values
+--  2. add 'vehicle' to allowed miniature_type values on both miniatures
+--     and painting_recipes (the recipes table shares the MiniatureType enum)
 --  3. add troop_count column to miniatures
 --
 -- SQLite does not support ALTER TABLE ... DROP CONSTRAINT, so we rebuild
--- the projects and miniatures tables. Foreign keys to these tables use
--- their PRIMARY KEY (id), which is preserved on rebuild.
+-- the affected tables. Foreign keys to these tables use their PRIMARY KEY (id),
+-- which is preserved on rebuild.
 
 PRAGMA foreign_keys = OFF;
 
@@ -48,8 +49,31 @@ SELECT id, project_id, name, miniature_type, progress_status, notes, NULL, creat
 DROP TABLE miniatures;
 ALTER TABLE miniatures_new RENAME TO miniatures;
 
+-- ---- painting_recipes: update CHECK to include 'vehicle' ----
+-- The recipes table reuses MiniatureType; without this, inserting a
+-- vehicle recipe would fail the CHECK constraint defined in 001.
+
+CREATE TABLE painting_recipes_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL,
+    miniature_type VARCHAR(20) NOT NULL CHECK (miniature_type IN ('troop', 'character', 'vehicle')),
+    steps TEXT NOT NULL,
+    paints_used TEXT,
+    techniques TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO painting_recipes_new (id, name, miniature_type, steps, paints_used, techniques, notes, created_at, updated_at)
+SELECT id, name, miniature_type, steps, paints_used, techniques, notes, created_at, updated_at FROM painting_recipes;
+
+DROP TABLE painting_recipes;
+ALTER TABLE painting_recipes_new RENAME TO painting_recipes;
+
 -- Recreate indexes that were defined on these tables in 001
 CREATE INDEX idx_projects_game_system ON projects(game_system);
 CREATE INDEX idx_miniatures_project_id ON miniatures(project_id);
+CREATE INDEX idx_recipes_miniature_type ON painting_recipes(miniature_type);
 
 PRAGMA foreign_keys = ON;

@@ -44,14 +44,30 @@ pub async fn create_project(
         return Err(AppError::ValidationError("Army is required".to_string()));
     }
 
-    if request.game_system.trim().is_empty() {
+    if !is_valid_game_system(&request.game_system) {
         return Err(AppError::ValidationError(
             "Game system is required".to_string(),
         ));
     }
+    if request.game_system.chars().count() > GAME_SYSTEM_MAX_LEN {
+        return Err(AppError::ValidationError(format!(
+            "Game system must be {} characters or fewer",
+            GAME_SYSTEM_MAX_LEN
+        )));
+    }
 
     let project = ProjectRepository::create(&database, request).await?;
     Ok(Json(project))
+}
+
+// Mirrors the VARCHAR(50) column width on projects.game_system.
+const GAME_SYSTEM_MAX_LEN: usize = 50;
+
+fn is_valid_game_system(value: &str) -> bool {
+    !value.trim().is_empty()
+        && value
+            .chars()
+            .any(|c| c.is_alphanumeric() || c.is_ascii_punctuation())
 }
 
 pub async fn get_project(
@@ -92,6 +108,20 @@ pub async fn update_project(
             return Err(AppError::ValidationError(
                 "Army cannot be empty".to_string(),
             ));
+        }
+    }
+
+    if let Some(ref game_system) = request.game_system {
+        if !is_valid_game_system(game_system) {
+            return Err(AppError::ValidationError(
+                "Game system cannot be empty".to_string(),
+            ));
+        }
+        if game_system.chars().count() > GAME_SYSTEM_MAX_LEN {
+            return Err(AppError::ValidationError(format!(
+                "Game system must be {} characters or fewer",
+                GAME_SYSTEM_MAX_LEN
+            )));
         }
     }
 

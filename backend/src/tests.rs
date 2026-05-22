@@ -5,24 +5,31 @@ mod property_tests {
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
     use shared_types::{
-        CreateMiniatureRequest, CreateProjectRequest, GameSystem, MiniatureType, ProgressStatus,
+        CreateMiniatureRequest, CreateProjectRequest, MiniatureType, ProgressStatus,
         UpdateProjectRequest,
     };
     use std::time::Duration;
 
-    // Feature: miniature-painting-tracker, Property 1: Project creation requires system and army
+    // Feature: miniature-painting-tracker, Property 1: Project creation requires name, system and army
     #[quickcheck]
-    fn test_project_creation_validation(name: String, army: String) -> TestResult {
-        // Test that project creation requires both name and army to be non-empty
+    fn test_project_creation_validation(
+        name: String,
+        game_system: String,
+        army: String,
+    ) -> TestResult {
+        // Test that project creation requires name, game_system and army to be non-empty
         let request = CreateProjectRequest {
             name: name.clone(),
-            game_system: "age_of_sigmar".to_string(), // Always provide a valid game system
+            game_system: game_system.clone(),
             army: army.clone(),
             description: None,
         };
 
-        // Project should be valid if and only if both name and army are valid strings
-        let is_valid_input = is_valid_string(&name) && is_valid_string(&army);
+        // Project should be valid iff all three fields are valid strings AND
+        // game_system fits within the 50-char column width.
+        let is_valid_input = is_valid_string(&name)
+            && is_valid_string(&army)
+            && is_valid_game_system(&game_system);
         let is_valid_request = validate_project_creation(&request);
 
         TestResult::from_bool(is_valid_input == is_valid_request)
@@ -626,7 +633,9 @@ mod property_tests {
 
     // Validation functions that implement the business logic
     fn validate_project_creation(request: &CreateProjectRequest) -> bool {
-        is_valid_string(&request.name) && is_valid_string(&request.army)
+        is_valid_string(&request.name)
+            && is_valid_string(&request.army)
+            && is_valid_game_system(&request.game_system)
     }
 
     fn validate_miniature_creation(request: &CreateMiniatureRequest) -> bool {
@@ -640,5 +649,14 @@ mod property_tests {
             && trimmed
                 .chars()
                 .any(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c == ' ')
+    }
+
+    // Mirrors the handler's free-form game_system check: must have a real
+    // character and fit the VARCHAR(50) column width.
+    fn is_valid_game_system(s: &str) -> bool {
+        !s.trim().is_empty()
+            && s.chars()
+                .any(|c| c.is_alphanumeric() || c.is_ascii_punctuation())
+            && s.chars().count() <= 50
     }
 }

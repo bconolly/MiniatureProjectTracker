@@ -665,7 +665,7 @@ components:
           type: integer
           nullable: true
           minimum: 1
-          description: Number of models represented by this unit. Defaults to 1 when unset.
+          description: Number of models represented by this unit. May be null; clients should treat null as 1 for display.
           example: 10
         created_at:
           type: string
@@ -701,7 +701,7 @@ components:
           type: integer
           nullable: true
           minimum: 1
-          description: Number of models in the unit. Defaults to 1 when unset.
+          description: Number of models in the unit. Omit or send null to leave unset; clients should treat null as 1 for display.
           example: 10
 
     UpdateMiniatureRequest:

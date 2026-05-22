@@ -195,8 +195,14 @@ struct GameSystemBadge: View {
 
     private static func customColor(for key: String) -> Color {
         let palette: [Color] = [.teal, .indigo, .pink, .brown, .mint, .cyan]
-        let hash = abs(key.hashValue)
-        return palette[hash % palette.count]
+        // FNV-1a 32-bit over UTF-8 bytes. Deterministic across launches and
+        // never overflow-traps, unlike `abs(String.hashValue)`.
+        var hash: UInt32 = 0x811c_9dc5
+        for byte in key.utf8 {
+            hash ^= UInt32(byte)
+            hash &*= 0x0100_0193
+        }
+        return palette[Int(hash % UInt32(palette.count))]
     }
 
     var body: some View {
