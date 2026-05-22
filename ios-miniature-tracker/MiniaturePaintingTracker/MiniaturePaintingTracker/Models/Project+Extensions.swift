@@ -14,14 +14,34 @@ extension Project {
     
     // MARK: - Computed Properties
     
-    /// Game system as an enum value
-    var gameSystemEnum: GameSystem {
+    /// Game system as an enum value. Returns nil when the stored string
+    /// is a user-defined (custom) game system. Use `gameSystemKey` for the
+    /// canonical raw value and `gameSystemDisplayName` for UI display.
+    var gameSystemEnum: GameSystem? {
         get {
-            return GameSystem(rawValue: gameSystem ?? "") ?? .ageOfSigmar
+            return GameSystem(rawValue: gameSystem ?? "")
         }
         set {
-            gameSystem = newValue.rawValue
+            gameSystem = newValue?.rawValue
         }
+    }
+
+    /// Canonical raw key for the project's game system. Either a built-in
+    /// `GameSystem.rawValue` ("age_of_sigmar", …) or a custom user-entered name.
+    var gameSystemKey: String {
+        get { gameSystem ?? "" }
+        set { gameSystem = newValue }
+    }
+
+    /// Human-readable display name for the project's game system,
+    /// resolving built-in raw values and passing through custom names.
+    var gameSystemDisplayName: String {
+        return GameSystemDisplay.displayName(for: gameSystem ?? "")
+    }
+
+    /// Short abbreviation for compact badge display.
+    var gameSystemAbbreviation: String {
+        return GameSystemDisplay.abbreviation(for: gameSystem ?? "")
     }
     
     /// Array of miniatures sorted by creation date
@@ -76,8 +96,10 @@ extension Project {
             throw ValidationError.emptyRequiredField("army")
         }
         
-        guard let gameSystem = gameSystem, GameSystem(rawValue: gameSystem) != nil else {
-            throw ValidationError.invalidEnumValue("gameSystem", gameSystem ?? "nil")
+        guard let gameSystem = gameSystem,
+              !gameSystem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            throw ValidationError.emptyRequiredField("gameSystem")
         }
     }
     
@@ -98,15 +120,33 @@ extension Project {
         army: String,
         description: String? = nil
     ) -> Project {
+        return create(
+            in: context,
+            name: name,
+            gameSystemKey: gameSystem.rawValue,
+            army: army,
+            description: description
+        )
+    }
+
+    /// Create with a raw game system key — supports both built-in raw values
+    /// (e.g. "age_of_sigmar") and user-defined custom names ("Mordheim").
+    static func create(
+        in context: NSManagedObjectContext,
+        name: String,
+        gameSystemKey: String,
+        army: String,
+        description: String? = nil
+    ) -> Project {
         let project = Project(context: context)
         project.id = UUID()
         project.name = name
-        project.gameSystemEnum = gameSystem
+        project.gameSystem = gameSystemKey
         project.army = army
         project.projectDescription = description
         project.createdAt = Date()
         project.updatedAt = Date()
-        
+
         return project
     }
 }

@@ -104,8 +104,8 @@ struct ProjectDetailView: View {
     private var projectInfoCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                GameSystemBadge(gameSystem: project.gameSystemEnum)
-                Text(project.gameSystemEnum.displayName)
+                GameSystemBadge(gameSystemKey: project.gameSystemKey)
+                Text(project.gameSystemDisplayName)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -243,9 +243,9 @@ struct MiniatureRowView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(miniature.name ?? "Unknown")
+                    Text(miniature.nameWithQuantity)
                         .font(.headline)
-                    
+
                     Image(systemName: miniature.miniatureTypeEnum.iconName)
                         .font(.caption)
                         .foregroundStyle(.secondary)

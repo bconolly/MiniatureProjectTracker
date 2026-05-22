@@ -210,7 +210,7 @@ class CoreDataStackInitializationPropertyTests: XCTestCase {
         )
         
         // Validate enum conversion works
-        XCTAssertEqual(project.gameSystemEnum, .ageOfSigmar, "Iteration \(iteration): Game system enum should be set correctly")
+        XCTAssertEqual(project.gameSystemEnum, GameSystem.ageOfSigmar, "Iteration \(iteration): Game system enum should be set correctly")
         XCTAssertEqual(project.gameSystem, "age_of_sigmar", "Iteration \(iteration): Game system raw value should be correct")
         
         // Validate validation works

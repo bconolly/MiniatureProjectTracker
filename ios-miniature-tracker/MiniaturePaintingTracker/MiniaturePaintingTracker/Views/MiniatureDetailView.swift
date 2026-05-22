@@ -119,7 +119,7 @@ struct MiniatureDetailView: View {
                     .foregroundStyle(.secondary)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(miniature.name ?? "Unknown")
+                    Text(miniature.nameWithQuantity)
                         .font(.title2)
                         .fontWeight(.bold)
                     Text(miniature.miniatureTypeEnum.displayName)
@@ -139,7 +139,7 @@ struct MiniatureDetailView: View {
                     Label(project.name ?? "Unknown Project", systemImage: "folder.fill")
                         .font(.subheadline)
                     Spacer()
-                    GameSystemBadge(gameSystem: project.gameSystemEnum)
+                    GameSystemBadge(gameSystemKey: project.gameSystemKey)
                 }
                 .foregroundStyle(.secondary)
             }

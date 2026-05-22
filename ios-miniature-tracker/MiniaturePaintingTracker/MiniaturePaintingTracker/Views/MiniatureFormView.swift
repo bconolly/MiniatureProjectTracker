@@ -24,6 +24,7 @@ struct MiniatureFormView: View {
     @State private var miniatureType: MiniatureType = .troop
     @State private var progressStatus: ProgressStatus = .unpainted
     @State private var notes = ""
+    @State private var quantity: Int = 1
     @State private var showingValidationError = false
     @State private var validationMessage = ""
     
@@ -41,11 +42,21 @@ struct MiniatureFormView: View {
             Form {
                 Section("Miniature Details") {
                     TextField("Name", text: $name)
-                    
+
                     Picker("Type", selection: $miniatureType) {
                         ForEach(MiniatureType.allCases, id: \.self) { type in
                             Label(type.displayName, systemImage: type.iconName)
                                 .tag(type)
+                        }
+                    }
+
+                    Stepper(value: $quantity, in: 1...999) {
+                        HStack {
+                            Text("Quantity")
+                            Spacer()
+                            Text("\(quantity)")
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
                         }
                     }
                 }
@@ -113,6 +124,7 @@ struct MiniatureFormView: View {
             miniatureType = miniature.miniatureTypeEnum
             progressStatus = miniature.progressStatusEnum
             notes = miniature.notes ?? ""
+            quantity = miniature.quantityValue
         }
     }
     
@@ -139,11 +151,12 @@ struct MiniatureFormView: View {
         
         miniature.name = trimmedName
         miniature.miniatureTypeEnum = miniatureType
-        
+        miniature.quantityValue = quantity
+
         if isEditing {
             miniature.progressStatusEnum = progressStatus
         }
-        
+
         miniature.notes = notes.isEmpty ? nil : notes
         miniature.updatedAt = Date()
         

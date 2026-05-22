@@ -15,9 +15,9 @@ enum GameSystem: String, CaseIterable, Identifiable {
     case ageOfSigmar = "age_of_sigmar"
     case horusHeresy = "horus_heresy"
     case warhammer40k = "warhammer_40k"
-    
+
     var id: String { rawValue }
-    
+
     /// Human-readable display name for the game system
     var displayName: String {
         switch self {
@@ -29,7 +29,7 @@ enum GameSystem: String, CaseIterable, Identifiable {
             return "Warhammer 40K"
         }
     }
-    
+
     /// Short abbreviation for the game system
     var abbreviation: String {
         switch self {
@@ -43,15 +43,45 @@ enum GameSystem: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Game System Display Helpers
+
+/// Display helpers for any game system string (built-in raw value or custom name).
+enum GameSystemDisplay {
+    /// Resolves a stored game system raw string to a human-readable name.
+    /// Built-ins resolve to their `displayName`; custom strings are returned as-is.
+    static func displayName(for raw: String) -> String {
+        if let builtin = GameSystem(rawValue: raw) {
+            return builtin.displayName
+        }
+        return raw
+    }
+
+    /// Short label for compact contexts (badges). Falls back to a truncated
+    /// custom name when no built-in abbreviation exists.
+    static func abbreviation(for raw: String) -> String {
+        if let builtin = GameSystem(rawValue: raw) {
+            return builtin.abbreviation
+        }
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        return String(trimmed.prefix(8))
+    }
+
+    /// Whether the raw string matches one of the built-in game systems.
+    static func isBuiltIn(_ raw: String) -> Bool {
+        return GameSystem(rawValue: raw) != nil
+    }
+}
+
 // MARK: - Miniature Type Enumeration
 
 /// Enumeration representing the different types of miniatures
 enum MiniatureType: String, CaseIterable, Identifiable {
     case troop = "troop"
     case character = "character"
-    
+    case vehicle = "vehicle"
+
     var id: String { rawValue }
-    
+
     /// Human-readable display name for the miniature type
     var displayName: String {
         switch self {
@@ -59,9 +89,11 @@ enum MiniatureType: String, CaseIterable, Identifiable {
             return "Troop"
         case .character:
             return "Character"
+        case .vehicle:
+            return "Vehicle"
         }
     }
-    
+
     /// Icon name for the miniature type
     var iconName: String {
         switch self {
@@ -69,6 +101,8 @@ enum MiniatureType: String, CaseIterable, Identifiable {
             return "person.3.fill"
         case .character:
             return "crown.fill"
+        case .vehicle:
+            return "car.fill"
         }
     }
 }

@@ -51,6 +51,14 @@ pub async fn create_miniature(
         ));
     }
 
+    if let Some(count) = request.troop_count {
+        if count < 1 {
+            return Err(AppError::ValidationError(
+                "troop_count must be >= 1".to_string(),
+            ));
+        }
+    }
+
     let miniature = MiniatureRepository::create(&database, project_id, request).await?;
     Ok(Json(miniature))
 }
@@ -80,6 +88,14 @@ pub async fn update_miniature(
         {
             return Err(AppError::ValidationError(
                 "Miniature name cannot be empty".to_string(),
+            ));
+        }
+    }
+
+    if let Some(count) = request.troop_count {
+        if count < 1 {
+            return Err(AppError::ValidationError(
+                "troop_count must be >= 1".to_string(),
             ));
         }
     }

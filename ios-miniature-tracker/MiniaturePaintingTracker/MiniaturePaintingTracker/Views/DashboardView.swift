@@ -269,7 +269,7 @@ struct RecentMiniatureRow: View {
                 .frame(width: 8, height: 8)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(miniature.name ?? "Unknown")
+                Text(miniature.nameWithQuantity)
                     .font(.subheadline)
                     .fontWeight(.medium)
                 

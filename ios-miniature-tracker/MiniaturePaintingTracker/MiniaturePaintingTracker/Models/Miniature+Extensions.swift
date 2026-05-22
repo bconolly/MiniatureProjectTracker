@@ -31,7 +31,13 @@ extension Miniature {
         }
         set {
             progressStatus = newValue.rawValue
-            updatedAt = Date()
+            let now = Date()
+            updatedAt = now
+            // Touch the parent so the Projects list and any @ObservedObject
+            // on the project recompute completionPercentage. Core Data's
+            // FetchRequest only fires when a tracked attribute on the
+            // observed entity changes — child attribute changes do not bubble.
+            project?.updatedAt = now
         }
     }
     
@@ -54,6 +60,25 @@ extension Miniature {
     /// Display name combining miniature type and name
     var displayName: String {
         return "\(miniatureTypeEnum.displayName): \(name ?? "Unknown")"
+    }
+
+    /// Quantity (number of models in the unit), always at least 1.
+    /// Reads/writes the Core Data `quantity` Int32 attribute; clamped to 1 when invalid.
+    var quantityValue: Int {
+        get {
+            let raw = Int(quantity)
+            return raw > 0 ? raw : 1
+        }
+        set {
+            quantity = Int32(max(1, newValue))
+        }
+    }
+
+    /// Name suffixed with quantity multiplier when greater than 1
+    /// (e.g. "Bloodletters ×10"). For single units returns the plain name.
+    var nameWithQuantity: String {
+        let base = name ?? "Unknown"
+        return quantityValue > 1 ? "\(base) ×\(quantityValue)" : base
     }
     
     // MARK: - Validation
@@ -127,7 +152,8 @@ extension Miniature {
         name: String,
         type: MiniatureType,
         project: Project,
-        notes: String? = nil
+        notes: String? = nil,
+        quantity: Int = 1
     ) -> Miniature {
         let miniature = Miniature(context: context)
         miniature.id = UUID()
@@ -135,10 +161,11 @@ extension Miniature {
         miniature.miniatureTypeEnum = type
         miniature.progressStatusEnum = .unpainted
         miniature.notes = notes
+        miniature.quantityValue = quantity
         miniature.createdAt = Date()
         miniature.updatedAt = Date()
         miniature.project = project
-        
+
         return miniature
     }
 }
