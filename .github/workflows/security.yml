@@ -51,11 +51,14 @@ jobs:
         cargo install cargo-outdated --locked
     
     - name: Run Rust security audit
+      # --ignore RUSTSEC-2023-0071: rsa Marvin attack — only reachable via
+      # sqlx-mysql, which we do NOT compile. See backend/deny.toml for the
+      # full justification.
       run: |
         cd backend
         echo "::group::Cargo Audit"
-        cargo audit --json > audit-results.json || true
-        cargo audit
+        cargo audit --ignore RUSTSEC-2023-0071 --json > audit-results.json || true
+        cargo audit --ignore RUSTSEC-2023-0071
         echo "::endgroup::"
     
     - name: Run cargo-deny checks

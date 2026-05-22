@@ -15,4 +15,6 @@ chrono = { workspace = true }
 uuid = { workspace = true }
 
 # Database support
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid"] }
+# default-features = false drops the unused `any` and `json` features (and avoids
+# pulling sqlx-mysql / rsa into the dep tree — RUSTSEC-2023-0071).
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "macros"] }

@@ -102,7 +102,15 @@ notice = "warn"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    #"RUSTSEC-0000-0000",
+    # rsa 0.9.x — Marvin timing-sidechannel attack. Reachable only via the
+    # sqlx-mysql driver, which is NOT compiled in this build: sqlx is set
+    # up with default-features = false and only the `sqlite` + `postgres`
+    # drivers active. sqlx-macros-core declares sqlx-mysql as an optional
+    # dep, so it lands in Cargo.lock even when unused — cargo audit walks
+    # the lockfile rather than the resolved feature graph and flags it.
+    # No upstream fix is available; revisit once sqlx publishes a version
+    # that removes the unused optional dep.
+    "RUSTSEC-2023-0071",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than this value will be ignored. Note that ignored advisories will still
