@@ -31,7 +31,13 @@ extension Miniature {
         }
         set {
             progressStatus = newValue.rawValue
-            updatedAt = Date()
+            let now = Date()
+            updatedAt = now
+            // Touch the parent so the Projects list and any @ObservedObject
+            // on the project recompute completionPercentage. Core Data's
+            // FetchRequest only fires when a tracked attribute on the
+            // observed entity changes — child attribute changes do not bubble.
+            project?.updatedAt = now
         }
     }
     
