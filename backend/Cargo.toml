@@ -17,7 +17,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
+# default-features = false drops the unused `any` and `json` features (and avoids
+# pulling sqlx-mysql / rsa into the dep tree — RUSTSEC-2023-0071).
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate", "macros"] }
 
 # Date/time
 chrono = { workspace = true }
@@ -36,8 +38,11 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 multer = "3.0"
 
 # AWS SDK (for S3 storage)
+# aws-sdk-s3's default `rustls` feature pulls in legacy hyper-rustls 0.24 /
+# rustls 0.21 / rustls-webpki 0.101 (RUSTSEC-2026-0098/0099/0104). Drop it
+# and keep `default-https-client` which uses the modern rustls-aws-lc chain.
 aws-config = "1.0"
-aws-sdk-s3 = "1.0"
+aws-sdk-s3 = { version = "1.0", default-features = false, features = ["sigv4a", "http-1x", "default-https-client", "rt-tokio", "behavior-version-latest"] }
 
 # Async trait support
 async-trait = "0.1"

@@ -44,16 +44,22 @@ jobs:
     
     - name: Run Rust security audit
       id: rust-audit
+      # --ignore RUSTSEC-2023-0071: rsa Marvin attack — only reachable via
+      # sqlx-mysql, which we do NOT compile (sqlx is configured with
+      # default-features = false; only sqlite + postgres drivers active).
+      # sqlx-macros-core lists sqlx-mysql as an optional dep so it appears
+      # in Cargo.lock regardless; cargo audit walks the lockfile, not the
+      # resolved feature graph. Mirrored in backend/deny.toml.
       run: |
         cd backend
         echo "## Rust Security Audit" >> $GITHUB_STEP_SUMMARY
-        if cargo audit --json > audit-results.json; then
+        if cargo audit --ignore RUSTSEC-2023-0071 --json > audit-results.json; then
           echo "✅ No known vulnerabilities found" >> $GITHUB_STEP_SUMMARY
           echo "rust_audit_status=success" >> $GITHUB_OUTPUT
         else
           echo "❌ Security vulnerabilities detected" >> $GITHUB_STEP_SUMMARY
           echo "rust_audit_status=failure" >> $GITHUB_OUTPUT
-          cargo audit >> $GITHUB_STEP_SUMMARY
+          cargo audit --ignore RUSTSEC-2023-0071 >> $GITHUB_STEP_SUMMARY
         fi
     
     - name: Run cargo-deny checks
