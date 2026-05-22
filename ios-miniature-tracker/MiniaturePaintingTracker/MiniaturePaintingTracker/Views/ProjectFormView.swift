@@ -16,25 +16,29 @@ enum ProjectFormMode {
 struct ProjectFormView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    
+
+    @FetchRequest(fetchRequest: CustomGameSystem.fetchRequestAllSorted())
+    private var customSystems: FetchedResults<CustomGameSystem>
+
     let mode: ProjectFormMode
-    
+
     @State private var name = ""
     @State private var army = ""
-    @State private var gameSystem: GameSystem = .warhammer40k
+    @State private var gameSystemKey: String = GameSystem.warhammer40k.rawValue
     @State private var projectDescription = ""
     @State private var showingValidationError = false
     @State private var validationMessage = ""
-    
+    @State private var showingAddCustomSystem = false
+
     var isEditing: Bool {
         if case .edit = mode { return true }
         return false
     }
-    
+
     var title: String {
         isEditing ? "Edit Project" : "New Project"
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -42,20 +46,37 @@ struct ProjectFormView: View {
                     TextField("Project Name", text: $name)
                     TextField("Army", text: $army)
                 }
-                
+
                 Section("Game System") {
-                    Picker("Game System", selection: $gameSystem) {
-                        ForEach(GameSystem.allCases, id: \.self) { system in
+                    Picker("Game System", selection: $gameSystemKey) {
+                        ForEach(GameSystem.allCases, id: \.rawValue) { system in
                             HStack {
                                 GameSystemBadge(gameSystem: system)
                                 Text(system.displayName)
                             }
-                            .tag(system)
+                            .tag(system.rawValue)
+                        }
+                        if !customSystems.isEmpty {
+                            Section("Custom") {
+                                ForEach(customSystems, id: \.objectID) { custom in
+                                    HStack {
+                                        GameSystemBadge(gameSystemKey: custom.storageKey)
+                                        Text(custom.displayName)
+                                    }
+                                    .tag(custom.storageKey)
+                                }
+                            }
                         }
                     }
                     .pickerStyle(.navigationLink)
+
+                    Button {
+                        showingAddCustomSystem = true
+                    } label: {
+                        Label("Add custom game system…", systemImage: "plus.circle")
+                    }
                 }
-                
+
                 Section("Description (Optional)") {
                     TextEditor(text: $projectDescription)
                         .frame(minHeight: 100)
@@ -69,17 +90,23 @@ struct ProjectFormView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveProject()
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || 
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty ||
                              army.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .onAppear {
                 loadExistingData()
+            }
+            .sheet(isPresented: $showingAddCustomSystem) {
+                AddCustomGameSystemView { newKey in
+                    gameSystemKey = newKey
+                }
+                .environment(\.managedObjectContext, viewContext)
             }
             .alert("Validation Error", isPresented: $showingValidationError) {
                 Button("OK", role: .cancel) { }
@@ -88,34 +115,41 @@ struct ProjectFormView: View {
             }
         }
     }
-    
+
     private func loadExistingData() {
         if case .edit(let project) = mode {
             name = project.name ?? ""
             army = project.army ?? ""
-            gameSystem = project.gameSystemEnum
+            let storedKey = project.gameSystemKey
+            gameSystemKey = storedKey.isEmpty ? GameSystem.warhammer40k.rawValue : storedKey
             projectDescription = project.projectDescription ?? ""
         }
     }
-    
+
     private func saveProject() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         let trimmedArmy = army.trimmingCharacters(in: .whitespaces)
-        
+
         guard !trimmedName.isEmpty else {
             validationMessage = "Please enter a project name."
             showingValidationError = true
             return
         }
-        
+
         guard !trimmedArmy.isEmpty else {
             validationMessage = "Please enter an army name."
             showingValidationError = true
             return
         }
-        
+
+        guard !gameSystemKey.trimmingCharacters(in: .whitespaces).isEmpty else {
+            validationMessage = "Please choose or add a game system."
+            showingValidationError = true
+            return
+        }
+
         let project: Project
-        
+
         if case .edit(let existingProject) = mode {
             project = existingProject
         } else {
@@ -123,13 +157,13 @@ struct ProjectFormView: View {
             project.id = UUID()
             project.createdAt = Date()
         }
-        
+
         project.name = trimmedName
         project.army = trimmedArmy
-        project.gameSystemEnum = gameSystem
+        project.gameSystem = gameSystemKey
         project.projectDescription = projectDescription.isEmpty ? nil : projectDescription
         project.updatedAt = Date()
-        
+
         do {
             try viewContext.save()
             dismiss()

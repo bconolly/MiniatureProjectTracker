@@ -21,7 +21,7 @@ struct ProjectListView: View {
     private var projects: FetchedResults<Project>
     
     @State private var showingAddProject = false
-    @State private var expandedSystems: Set<GameSystem> = Set(GameSystem.allCases)
+    @State private var expandedSystems: Set<String> = Set(GameSystem.allCases.map { $0.rawValue })
     @State private var searchText = ""
     
     var body: some View {
@@ -69,33 +69,33 @@ struct ProjectListView: View {
     
     private var projectList: some View {
         List {
-            ForEach(groupedProjects.keys.sorted(by: { $0.displayName < $1.displayName }), id: \.self) { gameSystem in
+            ForEach(sortedGameSystemKeys, id: \.self) { systemKey in
                 Section {
                     DisclosureGroup(
                         isExpanded: Binding(
-                            get: { expandedSystems.contains(gameSystem) },
+                            get: { expandedSystems.contains(systemKey) },
                             set: { isExpanded in
                                 if isExpanded {
-                                    expandedSystems.insert(gameSystem)
+                                    expandedSystems.insert(systemKey)
                                 } else {
-                                    expandedSystems.remove(gameSystem)
+                                    expandedSystems.remove(systemKey)
                                 }
                             }
                         )
                     ) {
-                        ForEach(armiesForGameSystem(gameSystem), id: \.self) { army in
+                        ForEach(armiesForGameSystem(systemKey), id: \.self) { army in
                             ArmySection(
                                 army: army,
-                                projects: projectsForArmy(gameSystem: gameSystem, army: army)
+                                projects: projectsForArmy(gameSystemKey: systemKey, army: army)
                             )
                         }
                     } label: {
                         HStack {
-                            GameSystemBadge(gameSystem: gameSystem)
-                            Text(gameSystem.displayName)
+                            GameSystemBadge(gameSystemKey: systemKey)
+                            Text(GameSystemDisplay.displayName(for: systemKey))
                                 .font(.headline)
                             Spacer()
-                            Text("\(countForGameSystem(gameSystem))")
+                            Text("\(countForGameSystem(systemKey))")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -105,9 +105,9 @@ struct ProjectListView: View {
         }
         .listStyle(.sidebar)
     }
-    
+
     // MARK: - Computed Properties
-    
+
     private var filteredProjects: [Project] {
         if searchText.isEmpty {
             return Array(projects)
@@ -117,23 +117,31 @@ struct ProjectListView: View {
             (project.army?.localizedCaseInsensitiveContains(searchText) ?? false)
         }
     }
-    
-    private var groupedProjects: [GameSystem: [Project]] {
-        Dictionary(grouping: filteredProjects) { $0.gameSystemEnum }
+
+    private var groupedProjects: [String: [Project]] {
+        Dictionary(grouping: filteredProjects) { $0.gameSystemKey }
     }
-    
-    private func armiesForGameSystem(_ gameSystem: GameSystem) -> [String] {
-        let projectsForSystem = groupedProjects[gameSystem] ?? []
+
+    private var sortedGameSystemKeys: [String] {
+        groupedProjects.keys.sorted { a, b in
+            GameSystemDisplay.displayName(for: a)
+                .localizedCaseInsensitiveCompare(GameSystemDisplay.displayName(for: b))
+                == .orderedAscending
+        }
+    }
+
+    private func armiesForGameSystem(_ systemKey: String) -> [String] {
+        let projectsForSystem = groupedProjects[systemKey] ?? []
         let armies = Set(projectsForSystem.compactMap { $0.army })
         return armies.sorted()
     }
-    
-    private func projectsForArmy(gameSystem: GameSystem, army: String) -> [Project] {
-        (groupedProjects[gameSystem] ?? []).filter { $0.army == army }
+
+    private func projectsForArmy(gameSystemKey: String, army: String) -> [Project] {
+        (groupedProjects[gameSystemKey] ?? []).filter { $0.army == army }
     }
-    
-    private func countForGameSystem(_ gameSystem: GameSystem) -> Int {
-        (groupedProjects[gameSystem] ?? []).count
+
+    private func countForGameSystem(_ systemKey: String) -> Int {
+        (groupedProjects[systemKey] ?? []).count
     }
 }
 
@@ -155,21 +163,44 @@ struct ArmySection: View {
 // MARK: - Game System Badge
 
 struct GameSystemBadge: View {
-    let gameSystem: GameSystem
-    
+    let gameSystemKey: String
+
+    /// Built-in convenience initializer.
+    init(gameSystem: GameSystem) {
+        self.gameSystemKey = gameSystem.rawValue
+    }
+
+    /// Generic initializer for raw keys (built-in raw value or custom name).
+    init(gameSystemKey: String) {
+        self.gameSystemKey = gameSystemKey
+    }
+
+    private var builtIn: GameSystem? {
+        GameSystem(rawValue: gameSystemKey)
+    }
+
     var color: Color {
-        switch gameSystem {
+        switch builtIn {
         case .warhammer40k:
             return .red
         case .ageOfSigmar:
             return .blue
         case .horusHeresy:
             return .purple
+        case .none:
+            // Stable, name-derived hue for custom game systems.
+            return Self.customColor(for: gameSystemKey)
         }
     }
-    
+
+    private static func customColor(for key: String) -> Color {
+        let palette: [Color] = [.teal, .indigo, .pink, .brown, .mint, .cyan]
+        let hash = abs(key.hashValue)
+        return palette[hash % palette.count]
+    }
+
     var body: some View {
-        Text(gameSystem.abbreviation)
+        Text(GameSystemDisplay.abbreviation(for: gameSystemKey))
             .font(.caption)
             .fontWeight(.bold)
             .foregroundStyle(.white)

@@ -44,6 +44,12 @@ pub async fn create_project(
         return Err(AppError::ValidationError("Army is required".to_string()));
     }
 
+    if request.game_system.trim().is_empty() {
+        return Err(AppError::ValidationError(
+            "Game system is required".to_string(),
+        ));
+    }
+
     let project = ProjectRepository::create(&database, request).await?;
     Ok(Json(project))
 }

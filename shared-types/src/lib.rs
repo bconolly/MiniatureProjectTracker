@@ -1,16 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[serde(rename_all = "snake_case")]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
-pub enum GameSystem {
-    AgeOfSigmar,
-    HorusHeresy,
-    #[serde(rename = "warhammer_40k")]
-    #[sqlx(rename = "warhammer_40k")]
-    Warhammer40k,
-}
+// Game system is a free-form string. The three historical built-ins
+// ("age_of_sigmar", "horus_heresy", "warhammer_40k") remain valid values;
+// clients can also send any user-defined system (e.g. "mordheim", "kill_team").
+pub type GameSystem = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
@@ -18,6 +12,7 @@ pub enum GameSystem {
 pub enum MiniatureType {
     Troop,
     Character,
+    Vehicle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq)]
@@ -49,6 +44,7 @@ pub struct Miniature {
     pub miniature_type: MiniatureType,
     pub progress_status: ProgressStatus,
     pub notes: Option<String>,
+    pub troop_count: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -99,6 +95,7 @@ pub struct CreateMiniatureRequest {
     pub name: String,
     pub miniature_type: MiniatureType,
     pub notes: Option<String>,
+    pub troop_count: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -106,6 +103,8 @@ pub struct UpdateMiniatureRequest {
     pub name: Option<String>,
     pub progress_status: Option<ProgressStatus>,
     pub notes: Option<String>,
+    pub troop_count: Option<i32>,
+    pub miniature_type: Option<MiniatureType>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

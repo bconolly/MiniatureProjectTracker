@@ -504,11 +504,13 @@ components:
   schemas:
     GameSystem:
       type: string
-      enum:
-        - age_of_sigmar
-        - horus_heresy
-        - warhammer_40k
-      description: Warhammer game system
+      minLength: 1
+      maxLength: 50
+      description: |
+        Game system identifier. Free-form string. The three historical
+        built-ins ("age_of_sigmar", "horus_heresy", "warhammer_40k")
+        remain valid; clients may also submit user-defined values
+        (e.g. "mordheim", "kill_team", "warhammer_fantasy").
       example: age_of_sigmar
 
     MiniatureType:
@@ -516,6 +518,7 @@ components:
       enum:
         - troop
         - character
+        - vehicle
       description: Type of miniature
       example: troop
 
@@ -658,6 +661,12 @@ components:
           nullable: true
           description: Optional notes about the miniature
           example: "Need to add more highlights to the armor"
+        troop_count:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Number of models represented by this unit. Defaults to 1 when unset.
+          example: 10
         created_at:
           type: string
           format: date-time
@@ -688,6 +697,12 @@ components:
           nullable: true
           description: Optional notes about the miniature
           example: "Need to add more highlights to the armor"
+        troop_count:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Number of models in the unit. Defaults to 1 when unset.
+          example: 10
 
     UpdateMiniatureRequest:
       type: object
@@ -698,6 +713,8 @@ components:
           minLength: 1
           description: Miniature name
           example: "Captain with Power Sword"
+        miniature_type:
+          $ref: '#/components/schemas/MiniatureType'
         progress_status:
           $ref: '#/components/schemas/ProgressStatus'
         notes:
@@ -705,6 +722,12 @@ components:
           nullable: true
           description: Optional notes about the miniature
           example: "Need to add more highlights to the armor"
+        troop_count:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Number of models in the unit.
+          example: 10
 
     PaintingRecipe:
       type: object

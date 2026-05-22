@@ -19,9 +19,9 @@ impl MiniatureRepository {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
                     r#"
-                    INSERT INTO miniatures (project_id, name, miniature_type, progress_status, notes, created_at, updated_at)
-                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-                    RETURNING id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at
+                    INSERT INTO miniatures (project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at)
+                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                    RETURNING id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at
                     "#
                 )
                 .bind(project_id)
@@ -29,6 +29,7 @@ impl MiniatureRepository {
                 .bind(&request.miniature_type)
                 .bind(ProgressStatus::Unpainted) // Default status
                 .bind(&request.notes)
+                .bind(request.troop_count)
                 .bind(now)
                 .bind(now)
                 .fetch_one(pool)
@@ -41,6 +42,7 @@ impl MiniatureRepository {
                     miniature_type: row.get("miniature_type"),
                     progress_status: row.get("progress_status"),
                     notes: row.get("notes"),
+                    troop_count: row.get("troop_count"),
                     created_at: row.get("created_at"),
                     updated_at: row.get("updated_at"),
                 })
@@ -48,9 +50,9 @@ impl MiniatureRepository {
             Database::Postgres(pool) => {
                 let row = sqlx::query(
                     r#"
-                    INSERT INTO miniatures (project_id, name, miniature_type, progress_status, notes, created_at, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    RETURNING id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at
+                    INSERT INTO miniatures (project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    RETURNING id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at
                     "#
                 )
                 .bind(project_id)
@@ -58,6 +60,7 @@ impl MiniatureRepository {
                 .bind(&request.miniature_type)
                 .bind(ProgressStatus::Unpainted) // Default status
                 .bind(&request.notes)
+                .bind(request.troop_count)
                 .bind(now)
                 .bind(now)
                 .fetch_one(pool)
@@ -70,6 +73,7 @@ impl MiniatureRepository {
                     miniature_type: row.get("miniature_type"),
                     progress_status: row.get("progress_status"),
                     notes: row.get("notes"),
+                    troop_count: row.get("troop_count"),
                     created_at: row.get("created_at"),
                     updated_at: row.get("updated_at"),
                 })
@@ -84,7 +88,7 @@ impl MiniatureRepository {
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
-                    "SELECT id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at FROM miniatures WHERE id = ?1"
+                    "SELECT id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at FROM miniatures WHERE id = ?1"
                 )
                 .bind(id)
                 .fetch_optional(pool)
@@ -97,13 +101,14 @@ impl MiniatureRepository {
                     miniature_type: r.get("miniature_type"),
                     progress_status: r.get("progress_status"),
                     notes: r.get("notes"),
+                    troop_count: r.get("troop_count"),
                     created_at: r.get("created_at"),
                     updated_at: r.get("updated_at"),
                 }))
             }
             Database::Postgres(pool) => {
                 let row = sqlx::query(
-                    "SELECT id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at FROM miniatures WHERE id = $1"
+                    "SELECT id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at FROM miniatures WHERE id = $1"
                 )
                 .bind(id)
                 .fetch_optional(pool)
@@ -116,6 +121,7 @@ impl MiniatureRepository {
                     miniature_type: r.get("miniature_type"),
                     progress_status: r.get("progress_status"),
                     notes: r.get("notes"),
+                    troop_count: r.get("troop_count"),
                     created_at: r.get("created_at"),
                     updated_at: r.get("updated_at"),
                 }))
@@ -130,7 +136,7 @@ impl MiniatureRepository {
         match database {
             Database::Sqlite(pool) => {
                 let rows = sqlx::query(
-                    "SELECT id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at FROM miniatures WHERE project_id = ?1 ORDER BY created_at"
+                    "SELECT id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at FROM miniatures WHERE project_id = ?1 ORDER BY created_at"
                 )
                 .bind(project_id)
                 .fetch_all(pool)
@@ -145,6 +151,7 @@ impl MiniatureRepository {
                         miniature_type: r.get("miniature_type"),
                         progress_status: r.get("progress_status"),
                         notes: r.get("notes"),
+                        troop_count: r.get("troop_count"),
                         created_at: r.get("created_at"),
                         updated_at: r.get("updated_at"),
                     })
@@ -152,7 +159,7 @@ impl MiniatureRepository {
             }
             Database::Postgres(pool) => {
                 let rows = sqlx::query(
-                    "SELECT id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at FROM miniatures WHERE project_id = $1 ORDER BY created_at"
+                    "SELECT id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at FROM miniatures WHERE project_id = $1 ORDER BY created_at"
                 )
                 .bind(project_id)
                 .fetch_all(pool)
@@ -167,6 +174,7 @@ impl MiniatureRepository {
                         miniature_type: r.get("miniature_type"),
                         progress_status: r.get("progress_status"),
                         notes: r.get("notes"),
+                        troop_count: r.get("troop_count"),
                         created_at: r.get("created_at"),
                         updated_at: r.get("updated_at"),
                     })
@@ -191,20 +199,24 @@ impl MiniatureRepository {
         let name = request.name.unwrap_or(current.name);
         let progress_status = request.progress_status.unwrap_or(current.progress_status);
         let notes = request.notes.or(current.notes);
+        let troop_count = request.troop_count.or(current.troop_count);
+        let miniature_type = request.miniature_type.unwrap_or(current.miniature_type);
 
         match database {
             Database::Sqlite(pool) => {
                 let row = sqlx::query(
                     r#"
-                    UPDATE miniatures 
-                    SET name = ?1, progress_status = ?2, notes = ?3, updated_at = ?4
-                    WHERE id = ?5
-                    RETURNING id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at
+                    UPDATE miniatures
+                    SET name = ?1, progress_status = ?2, notes = ?3, troop_count = ?4, miniature_type = ?5, updated_at = ?6
+                    WHERE id = ?7
+                    RETURNING id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at
                     "#
                 )
                 .bind(&name)
                 .bind(&progress_status)
                 .bind(&notes)
+                .bind(troop_count)
+                .bind(&miniature_type)
                 .bind(now)
                 .bind(id)
                 .fetch_optional(pool)
@@ -217,6 +229,7 @@ impl MiniatureRepository {
                     miniature_type: r.get("miniature_type"),
                     progress_status: r.get("progress_status"),
                     notes: r.get("notes"),
+                    troop_count: r.get("troop_count"),
                     created_at: r.get("created_at"),
                     updated_at: r.get("updated_at"),
                 }))
@@ -224,15 +237,17 @@ impl MiniatureRepository {
             Database::Postgres(pool) => {
                 let row = sqlx::query(
                     r#"
-                    UPDATE miniatures 
-                    SET name = $1, progress_status = $2, notes = $3, updated_at = $4
-                    WHERE id = $5
-                    RETURNING id, project_id, name, miniature_type, progress_status, notes, created_at, updated_at
+                    UPDATE miniatures
+                    SET name = $1, progress_status = $2, notes = $3, troop_count = $4, miniature_type = $5, updated_at = $6
+                    WHERE id = $7
+                    RETURNING id, project_id, name, miniature_type, progress_status, notes, troop_count, created_at, updated_at
                     "#
                 )
                 .bind(&name)
                 .bind(&progress_status)
                 .bind(&notes)
+                .bind(troop_count)
+                .bind(&miniature_type)
                 .bind(now)
                 .bind(id)
                 .fetch_optional(pool)
@@ -245,6 +260,7 @@ impl MiniatureRepository {
                     miniature_type: r.get("miniature_type"),
                     progress_status: r.get("progress_status"),
                     notes: r.get("notes"),
+                    troop_count: r.get("troop_count"),
                     created_at: r.get("created_at"),
                     updated_at: r.get("updated_at"),
                 }))

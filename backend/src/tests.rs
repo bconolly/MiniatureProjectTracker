@@ -16,7 +16,7 @@ mod property_tests {
         // Test that project creation requires both name and army to be non-empty
         let request = CreateProjectRequest {
             name: name.clone(),
-            game_system: GameSystem::AgeOfSigmar, // Always provide a valid game system
+            game_system: "age_of_sigmar".to_string(), // Always provide a valid game system
             army: army.clone(),
             description: None,
         };
@@ -36,6 +36,7 @@ mod property_tests {
             name: name.clone(),
             miniature_type: MiniatureType::Troop, // Always provide a valid miniature type
             notes: None,
+            troop_count: None,
         };
 
         // Miniature should be valid if and only if name is a valid string
@@ -61,7 +62,7 @@ mod property_tests {
             // Create a project
             let create_request = CreateProjectRequest {
                 name: "Original Name".to_string(),
-                game_system: GameSystem::AgeOfSigmar,
+                game_system: "age_of_sigmar".to_string(),
                 army: "Original Army".to_string(),
                 description: Some("Original description".to_string()),
             };
@@ -114,7 +115,7 @@ mod property_tests {
             // Create a project
             let create_request = CreateProjectRequest {
                 name: "Test Project".to_string(),
-                game_system: GameSystem::AgeOfSigmar,
+                game_system: "age_of_sigmar".to_string(),
                 army: "Test Army".to_string(),
                 description: None,
             };
@@ -128,6 +129,7 @@ mod property_tests {
                 name: miniature_name.clone(),
                 miniature_type: MiniatureType::Troop,
                 notes: None,
+                troop_count: None,
             };
 
             let miniature = MiniatureRepository::create(&database, project.id, miniature_request)
@@ -189,7 +191,7 @@ mod property_tests {
             // Create a project
             let create_request = CreateProjectRequest {
                 name: "Test Project".to_string(),
-                game_system: GameSystem::AgeOfSigmar,
+                game_system: "age_of_sigmar".to_string(),
                 army: "Test Army".to_string(),
                 description: None,
             };
@@ -203,6 +205,7 @@ mod property_tests {
                 name: "Test Miniature".to_string(),
                 miniature_type: MiniatureType::Character,
                 notes: None,
+                troop_count: None,
             };
 
             let miniature = MiniatureRepository::create(&database, project.id, miniature_request)
@@ -253,7 +256,7 @@ mod property_tests {
             // Test project creation validation
             let project_request = CreateProjectRequest {
                 name: name.clone(),
-                game_system: GameSystem::Warhammer40k,
+                game_system: "warhammer_40k".to_string(),
                 army: army.clone(),
                 description: None,
             };
@@ -287,6 +290,7 @@ mod property_tests {
                     name: miniature_name.clone(),
                     miniature_type: MiniatureType::Troop,
                     notes: None,
+                    troop_count: None,
                 };
 
                 let miniature_result = crate::handlers::miniatures::create_miniature(
@@ -322,7 +326,7 @@ mod property_tests {
             // Test with both valid and invalid inputs
             let project_request = CreateProjectRequest {
                 name: name.clone(),
-                game_system: GameSystem::AgeOfSigmar,
+                game_system: "age_of_sigmar".to_string(),
                 army: army.clone(),
                 description: None,
             };
@@ -371,7 +375,7 @@ mod property_tests {
             // Create a request that will trigger a validation error
             let project_request = CreateProjectRequest {
                 name: invalid_name.clone(),
-                game_system: GameSystem::HorusHeresy,
+                game_system: "horus_heresy".to_string(),
                 army: "Test Army".to_string(),
                 description: None,
             };
@@ -576,7 +580,7 @@ mod property_tests {
     async fn create_test_project(database: &Database) -> shared_types::Project {
         let create_request = CreateProjectRequest {
             name: "Test Project".to_string(),
-            game_system: GameSystem::AgeOfSigmar,
+            game_system: "age_of_sigmar".to_string(),
             army: "Test Army".to_string(),
             description: None,
         };
@@ -593,6 +597,7 @@ mod property_tests {
             name: "Test Miniature".to_string(),
             miniature_type: MiniatureType::Troop,
             notes: None,
+            troop_count: None,
         };
         MiniatureRepository::create(database, project_id, miniature_request)
             .await

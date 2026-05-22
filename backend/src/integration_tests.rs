@@ -41,7 +41,7 @@ mod integration_tests {
         // Step 1: Create a new project
         let project_request = CreateProjectRequest {
             name: "Space Marines Chapter".to_string(),
-            game_system: GameSystem::Warhammer40k,
+            game_system: "warhammer_40k".to_string(),
             army: "Ultramarines".to_string(),
             description: Some("Complete Ultramarines army project".to_string()),
         };
@@ -61,16 +61,19 @@ mod integration_tests {
                 name: "Captain in Terminator Armor".to_string(),
                 miniature_type: MiniatureType::Character,
                 notes: Some("Chapter Master conversion".to_string()),
+                troop_count: None,
             },
             CreateMiniatureRequest {
                 name: "Tactical Squad Sergeant".to_string(),
                 miniature_type: MiniatureType::Troop,
                 notes: None,
+                troop_count: None,
             },
             CreateMiniatureRequest {
                 name: "Tactical Marine 1".to_string(),
                 miniature_type: MiniatureType::Troop,
                 notes: None,
+                troop_count: None,
             },
         ];
 
@@ -104,6 +107,8 @@ mod integration_tests {
                     name: None,
                     progress_status: Some(stage.clone()),
                     notes: Some(format!("Updated to {:?} stage", stage)),
+                    troop_count: None,
+                    miniature_type: None,
                 };
 
                 let updated_miniature = handlers::miniatures::update_miniature(
@@ -424,7 +429,7 @@ mod integration_tests {
         // Test 1: Invalid project creation
         let invalid_project_request = CreateProjectRequest {
             name: "".to_string(), // Empty name should fail validation
-            game_system: GameSystem::AgeOfSigmar,
+            game_system: "age_of_sigmar".to_string(),
             army: "Test Army".to_string(),
             description: None,
         };
@@ -452,6 +457,7 @@ mod integration_tests {
             name: "   ".to_string(), // Whitespace-only name should fail
             miniature_type: MiniatureType::Troop,
             notes: None,
+            troop_count: None,
         };
 
         let result = handlers::miniatures::create_miniature(
@@ -471,6 +477,7 @@ mod integration_tests {
             name: "Valid Miniature".to_string(),
             miniature_type: MiniatureType::Character,
             notes: None,
+            troop_count: None,
         };
 
         let result = handlers::miniatures::create_miniature(
@@ -554,16 +561,19 @@ mod integration_tests {
                 name: "Concurrent Miniature 1".to_string(),
                 miniature_type: MiniatureType::Troop,
                 notes: None,
+                troop_count: None,
             },
             CreateMiniatureRequest {
                 name: "Concurrent Miniature 2".to_string(),
                 miniature_type: MiniatureType::Character,
                 notes: None,
+                troop_count: None,
             },
             CreateMiniatureRequest {
                 name: "Concurrent Miniature 3".to_string(),
                 miniature_type: MiniatureType::Troop,
                 notes: None,
+                troop_count: None,
             },
         ];
 
@@ -618,7 +628,7 @@ mod integration_tests {
         for malicious_input in sql_injection_attempts {
             let project_request = CreateProjectRequest {
                 name: malicious_input.to_string(),
-                game_system: GameSystem::Warhammer40k,
+                game_system: "warhammer_40k".to_string(),
                 army: "Test Army".to_string(),
                 description: None,
             };
@@ -656,6 +666,7 @@ mod integration_tests {
                 name: xss_payload.to_string(),
                 miniature_type: MiniatureType::Troop,
                 notes: Some(format!("Notes with XSS: {}", xss_payload)),
+                troop_count: None,
             };
 
             let result = handlers::miniatures::create_miniature(
@@ -733,7 +744,7 @@ mod integration_tests {
             // Large project name
             CreateProjectRequest {
                 name: large_string.clone(),
-                game_system: GameSystem::Warhammer40k,
+                game_system: "warhammer_40k".to_string(),
                 army: "Test Army".to_string(),
                 description: Some(large_string.clone()),
             },
@@ -771,7 +782,7 @@ mod integration_tests {
         for unicode_input in unicode_tests {
             let project_request = CreateProjectRequest {
                 name: unicode_input.to_string(),
-                game_system: GameSystem::AgeOfSigmar,
+                game_system: "age_of_sigmar".to_string(),
                 army: "Unicode Test Army".to_string(),
                 description: Some(format!("Testing unicode: {}", unicode_input)),
             };
@@ -816,6 +827,7 @@ mod integration_tests {
                         MiniatureType::Character
                     },
                     notes: Some(format!("Created concurrently: {}", i)),
+                    troop_count: None,
                 };
 
                 handlers::miniatures::create_miniature(
@@ -868,7 +880,7 @@ mod integration_tests {
         for (input, expected_output) in sanitization_tests {
             let project_request = CreateProjectRequest {
                 name: input.to_string(),
-                game_system: GameSystem::Warhammer40k,
+                game_system: "warhammer_40k".to_string(),
                 army: "Sanitization Test".to_string(),
                 description: None,
             };
@@ -888,7 +900,7 @@ mod integration_tests {
     async fn create_test_project(database: &Database) -> shared_types::Project {
         let create_request = CreateProjectRequest {
             name: "Integration Test Project".to_string(),
-            game_system: GameSystem::AgeOfSigmar,
+            game_system: "age_of_sigmar".to_string(),
             army: "Stormcast Eternals".to_string(),
             description: Some("Test project for integration tests".to_string()),
         };
@@ -915,10 +927,12 @@ mod integration_tests {
                 match miniature_type {
                     MiniatureType::Troop => "Troop",
                     MiniatureType::Character => "Character",
+                    MiniatureType::Vehicle => "Vehicle",
                 }
             ),
             miniature_type,
             notes: Some("Created for integration testing".to_string()),
+            troop_count: None,
         };
         MiniatureRepository::create(database, project_id, miniature_request)
             .await
