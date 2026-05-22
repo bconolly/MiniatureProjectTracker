@@ -80,44 +80,58 @@ vi.mock('../hooks/useApi')
 describe('ProjectDetail', () => {
   const mockUseApi = vi.mocked(useApi)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    
-    // Mock useApi to return different values for different calls
+  // Helper to set up the mock with explicit per-call returns. ProjectDetail
+  // calls useApi 5 times in order (project.get, miniature.listByProject,
+  // project.update, project.delete, miniature.create); positional chains
+  // were brittle as the component grew. setupMocks resets first so tests
+  // never inherit a partially-consumed queue from a previous test.
+  type UseApiReturn = ReturnType<typeof useApi>
+  const fallback: UseApiReturn = {
+    data: null,
+    loading: false,
+    error: null,
+    execute: vi.fn(),
+    reset: vi.fn(),
+  }
+  const setupMocks = (overrides: Partial<{ project: UseApiReturn; miniatures: UseApiReturn }> = {}) => {
+    mockUseApi.mockReset()
     mockUseApi
-      .mockReturnValueOnce({
+      .mockReturnValueOnce(overrides.project ?? {
         data: mockProject,
         loading: false,
         error: null,
         execute: vi.fn(),
         reset: vi.fn(),
       })
-      .mockReturnValueOnce({
+      .mockReturnValueOnce(overrides.miniatures ?? {
         data: mockMiniatures,
         loading: false,
         error: null,
         execute: vi.fn(),
         reset: vi.fn(),
       })
-      .mockReturnValue({
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      })
+      .mockReturnValue(fallback)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMocks()
   })
 
   it('renders project information correctly', async () => {
     renderProjectDetail()
 
     await waitFor(() => {
-      expect(screen.getByText('Test Project')).toBeInTheDocument()
+      // Project name appears in both the breadcrumb and the heading.
+      expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0)
       expect(screen.getByText('Age of Sigmar')).toBeInTheDocument()
       expect(screen.getByText('Stormcast Eternals')).toBeInTheDocument()
       expect(screen.getByText('A test project for unit testing')).toBeInTheDocument()
-      expect(screen.getByText(/Created: 1\/1\/2024/)).toBeInTheDocument()
-      expect(screen.getByText(/Updated: 1\/2\/2024/)).toBeInTheDocument()
+      // Project header renders both dates in one Typography; miniature
+      // cards also render Updated dates, so match the combined header line.
+      expect(
+        screen.getByText(/Created: 1\/1\/2024.*Updated: 1\/2\/2024/)
+      ).toBeInTheDocument()
     })
   })
 
@@ -126,7 +140,8 @@ describe('ProjectDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Projects')).toBeInTheDocument()
-      expect(screen.getByText('Test Project')).toBeInTheDocument()
+      // Project name appears in both breadcrumb and h1 — assert at least one.
+      expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0)
     })
   })
 
@@ -180,21 +195,16 @@ describe('ProjectDetail', () => {
   })
 
   it('handles project not found error', async () => {
-    mockUseApi
-      .mockReturnValueOnce({
+    setupMocks({
+      project: {
         data: null,
         loading: false,
         error: 'Project not found',
         execute: vi.fn(),
         reset: vi.fn(),
-      })
-      .mockReturnValue({
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      })
+      },
+      miniatures: fallback,
+    })
 
     renderProjectDetail()
 
@@ -205,28 +215,15 @@ describe('ProjectDetail', () => {
   })
 
   it('displays empty state when no miniatures exist', async () => {
-    mockUseApi
-      .mockReturnValueOnce({
-        data: mockProject,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      })
-      .mockReturnValueOnce({
+    setupMocks({
+      miniatures: {
         data: [],
         loading: false,
         error: null,
         execute: vi.fn(),
         reset: vi.fn(),
-      })
-      .mockReturnValue({
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      })
+      },
+    })
 
     renderProjectDetail()
 

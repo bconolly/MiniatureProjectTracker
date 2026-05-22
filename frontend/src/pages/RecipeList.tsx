@@ -189,8 +189,10 @@ function RecipeList() {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box display="flex" alignItems="center" gap={2}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Filter by Type</InputLabel>
+            <InputLabel id="recipe-type-filter-label">Filter by Type</InputLabel>
             <Select
+              labelId="recipe-type-filter-label"
+              id="recipe-type-filter"
               value={typeFilter}
               label="Filter by Type"
               onChange={(e) => setTypeFilter(e.target.value)}

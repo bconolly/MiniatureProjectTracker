@@ -8,14 +8,14 @@ export interface ApiState<T> {
   error: string | null
 }
 
-export interface ApiHookReturn<T> extends ApiState<T> {
-  execute: (...args: any[]) => Promise<T | null>
+export interface ApiHookReturn<T, A extends unknown[] = unknown[]> extends ApiState<T> {
+  execute: (...args: A) => Promise<T | null>
   reset: () => void
 }
 
-export function useApi<T>(
-  apiFunction: (...args: any[]) => Promise<AxiosResponse<T>>
-): ApiHookReturn<T> {
+export function useApi<T, A extends unknown[] = unknown[]>(
+  apiFunction: (...args: A) => Promise<AxiosResponse<T>>
+): ApiHookReturn<T, A> {
   const [state, setState] = useState<ApiState<T>>({
     data: null,
     loading: false,
@@ -23,7 +23,7 @@ export function useApi<T>(
   })
 
   const execute = useCallback(
-    async (...args: any[]): Promise<T | null> => {
+    async (...args: A): Promise<T | null> => {
       setState(prev => ({ ...prev, loading: true, error: null }))
       
       try {

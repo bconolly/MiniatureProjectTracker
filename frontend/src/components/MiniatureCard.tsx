@@ -84,7 +84,8 @@ const MiniatureCard: React.FC<MiniatureCardProps> = ({
     return new Date(dateString).toLocaleDateString()
   }
 
-  const getProgressColor = (status: ProgressStatus) => {
+  type ProgressColor = 'success' | 'info' | 'warning' | 'secondary' | 'primary'
+  const getProgressColor = (status: ProgressStatus): ProgressColor => {
     switch (status) {
       case ProgressStatus.Completed:
         return 'success'
@@ -95,7 +96,7 @@ const MiniatureCard: React.FC<MiniatureCardProps> = ({
       case ProgressStatus.Primed:
         return 'secondary'
       default:
-        return 'default'
+        return 'primary'
     }
   }
 
@@ -173,7 +174,7 @@ const MiniatureCard: React.FC<MiniatureCardProps> = ({
             <Chip 
               label={PROGRESS_STATUS_LABELS[miniature.progress_status]}
               size="small"
-              color={progressColor as any}
+              color={progressColor}
               clickable
               onClick={handleProgressMenuClick}
             />
@@ -181,7 +182,7 @@ const MiniatureCard: React.FC<MiniatureCardProps> = ({
           <LinearProgress 
             variant="determinate" 
             value={progressValue} 
-            color={progressColor as any}
+            color={progressColor}
             sx={{ height: 6, borderRadius: 3 }}
           />
         </Box>

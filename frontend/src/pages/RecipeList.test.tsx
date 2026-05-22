@@ -1,12 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import RecipeList from './RecipeList'
 import type { PaintingRecipe } from '../types'
 import { MiniatureType } from '../types'
 import { useApi } from '../hooks/useApi'
+import { recipeApi } from '../api/client'
 
-// Mock the API client
+// Mock the API client. The vi.fn() instances serve as stable identity keys
+// for routing useApi mock returns below (apiFunction === recipeApi.list).
 vi.mock('../api/client', () => ({
   recipeApi: {
     list: vi.fn(),
@@ -22,9 +24,34 @@ vi.mock('../hooks/useApi', () => ({
 }))
 
 // Mock components to avoid complex rendering
+type RecipeCardMockProps = {
+  recipe: PaintingRecipe
+  onView: (r: PaintingRecipe) => void
+  onEdit: (r: PaintingRecipe) => void
+  onDelete: (r: PaintingRecipe) => void
+}
+type RecipeFormMockProps = {
+  open: boolean
+  onClose: () => void
+  onSubmit: (data: { name: string; miniature_type: string }) => void
+  recipe?: PaintingRecipe
+}
+type RecipeDetailMockProps = {
+  recipe?: PaintingRecipe
+  open: boolean
+  onClose: () => void
+  onEdit: (r: PaintingRecipe) => void
+  onDelete: (r: PaintingRecipe) => void
+}
+type DeleteConfirmDialogMockProps = {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+}
 vi.mock('../components', () => ({
   LoadingSpinner: () => <div>Loading...</div>,
-  RecipeCard: ({ recipe, onView, onEdit, onDelete }: any) => (
+  RecipeCard: ({ recipe, onView, onEdit, onDelete }: RecipeCardMockProps) => (
     <div data-testid={`recipe-card-${recipe.id}`}>
       <h3>{recipe.name}</h3>
       <button onClick={() => onView(recipe)}>View</button>
@@ -32,7 +59,7 @@ vi.mock('../components', () => ({
       <button onClick={() => onDelete(recipe)}>Delete</button>
     </div>
   ),
-  RecipeForm: ({ open, onClose, onSubmit, recipe }: any) => (
+  RecipeForm: ({ open, onClose, onSubmit, recipe }: RecipeFormMockProps) => (
     open ? (
       <div data-testid="recipe-form">
         <h2>{recipe ? 'Edit Recipe' : 'Create New Recipe'}</h2>
@@ -43,7 +70,7 @@ vi.mock('../components', () => ({
       </div>
     ) : null
   ),
-  RecipeDetail: ({ recipe, open, onClose, onEdit, onDelete }: any) => (
+  RecipeDetail: ({ recipe, open, onClose, onEdit, onDelete }: RecipeDetailMockProps) => (
     open && recipe ? (
       <div data-testid="recipe-detail">
         <h2>{recipe.name}</h2>
@@ -53,7 +80,7 @@ vi.mock('../components', () => ({
       </div>
     ) : null
   ),
-  DeleteConfirmDialog: ({ open, onClose, onConfirm, title }: any) => (
+  DeleteConfirmDialog: ({ open, onClose, onConfirm, title }: DeleteConfirmDialogMockProps) => (
     open ? (
       <div data-testid="delete-dialog">
         <h2>{title}</h2>
@@ -88,33 +115,34 @@ const mockRecipes: PaintingRecipe[] = [
   },
 ]
 
-// Mock the useApi hook
-vi.mock('../hooks/useApi')
 const mockUseApi = vi.mocked(useApi)
+
+// RecipeList calls useApi 4 times per render (list, create, update, delete).
+// Each useApi return object — including its `execute` function — must keep
+// a stable reference across renders, otherwise the `useEffect([fetchRecipes])`
+// in RecipeList re-fires every render and the component renders infinitely.
+// We hold one return-object per recipeApi method, routed by identity, and
+// tests can override entries before render.
+type UseApiReturn = ReturnType<typeof useApi>
+let returnsByApi: Map<unknown, UseApiReturn>
+const blankReturn = (): UseApiReturn => ({
+  data: null,
+  loading: false,
+  error: null,
+  execute: vi.fn(),
+  reset: vi.fn(),
+})
 
 describe('RecipeList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    // Default mock implementation
-    mockUseApi.mockImplementation((apiFunction) => {
-      if (apiFunction.name === 'list') {
-        return {
-          data: mockRecipes,
-          loading: false,
-          error: null,
-          execute: vi.fn().mockResolvedValue(mockRecipes),
-          reset: vi.fn(),
-        }
-      }
-      return {
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      }
-    })
+    returnsByApi = new Map<unknown, UseApiReturn>([
+      [recipeApi.list, { ...blankReturn(), data: mockRecipes, execute: vi.fn().mockResolvedValue(mockRecipes) }],
+      [recipeApi.create, blankReturn()],
+      [recipeApi.update, blankReturn()],
+      [recipeApi.delete, blankReturn()],
+    ])
+    mockUseApi.mockImplementation((api) => returnsByApi.get(api) ?? blankReturn())
   })
 
   it('renders recipe list correctly', async () => {
@@ -131,73 +159,23 @@ describe('RecipeList', () => {
   })
 
   it('shows loading state initially', () => {
-    mockUseApi.mockImplementation((apiFunction) => {
-      if (apiFunction.name === 'list') {
-        return {
-          data: null,
-          loading: true,
-          error: null,
-          execute: vi.fn(),
-          reset: vi.fn(),
-        }
-      }
-      return {
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      }
-    })
-
+    returnsByApi.set(recipeApi.list, { ...blankReturn(), loading: true })
     render(<RecipeList />)
     expect(screen.getByText('Loading...')).toBeInTheDocument()
   })
 
   it('shows error state', () => {
-    mockUseApi.mockImplementation((apiFunction) => {
-      if (apiFunction.name === 'list') {
-        return {
-          data: null,
-          loading: false,
-          error: 'Failed to load recipes',
-          execute: vi.fn(),
-          reset: vi.fn(),
-        }
-      }
-      return {
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      }
-    })
-
+    returnsByApi.set(recipeApi.list, { ...blankReturn(), error: 'Failed to load recipes' })
     render(<RecipeList />)
     expect(screen.getByText('Failed to load recipes')).toBeInTheDocument()
   })
 
   it('shows empty state when no recipes', () => {
-    mockUseApi.mockImplementation((apiFunction) => {
-      if (apiFunction.name === 'list') {
-        return {
-          data: [],
-          loading: false,
-          error: null,
-          execute: vi.fn().mockResolvedValue([]),
-          reset: vi.fn(),
-        }
-      }
-      return {
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      }
+    returnsByApi.set(recipeApi.list, {
+      ...blankReturn(),
+      data: [],
+      execute: vi.fn().mockResolvedValue([]),
     })
-
     render(<RecipeList />)
     expect(screen.getByText('No recipes yet')).toBeInTheDocument()
     expect(screen.getByText('Create your first painting recipe to get started.')).toBeInTheDocument()
@@ -241,31 +219,26 @@ describe('RecipeList', () => {
     expect(screen.getByTestId('recipe-form')).toBeInTheDocument()
   })
 
+  // Each mock RecipeCard renders its own View/Edit/Delete buttons, so with
+  // 2 recipes there are 2 of each in the DOM. Scope to the first card.
   it('handles recipe view', async () => {
     const user = userEvent.setup()
     render(<RecipeList />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-1')).toBeInTheDocument()
-    })
+    const card1 = await screen.findByTestId('recipe-card-1')
+    await user.click(within(card1).getByRole('button', { name: 'View' }))
 
-    const viewButton = screen.getByRole('button', { name: 'View' })
-    await user.click(viewButton)
-
-    expect(screen.getByTestId('recipe-detail')).toBeInTheDocument()
-    expect(screen.getByText('Troop Recipe')).toBeInTheDocument()
+    const detail = screen.getByTestId('recipe-detail')
+    expect(detail).toBeInTheDocument()
+    expect(within(detail).getByText('Troop Recipe')).toBeInTheDocument()
   })
 
   it('handles recipe edit', async () => {
     const user = userEvent.setup()
     render(<RecipeList />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-1')).toBeInTheDocument()
-    })
-
-    const editButton = screen.getByRole('button', { name: 'Edit' })
-    await user.click(editButton)
+    const card1 = await screen.findByTestId('recipe-card-1')
+    await user.click(within(card1).getByRole('button', { name: 'Edit' }))
 
     expect(screen.getByTestId('recipe-form')).toBeInTheDocument()
     expect(screen.getByText('Edit Recipe')).toBeInTheDocument()
@@ -275,12 +248,8 @@ describe('RecipeList', () => {
     const user = userEvent.setup()
     render(<RecipeList />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-1')).toBeInTheDocument()
-    })
-
-    const deleteButton = screen.getByRole('button', { name: 'Delete' })
-    await user.click(deleteButton)
+    const card1 = await screen.findByTestId('recipe-card-1')
+    await user.click(within(card1).getByRole('button', { name: 'Delete' }))
 
     expect(screen.getByTestId('delete-dialog')).toBeInTheDocument()
     expect(screen.getByText('Delete Recipe')).toBeInTheDocument()
@@ -289,34 +258,7 @@ describe('RecipeList', () => {
   it('creates new recipe successfully', async () => {
     const user = userEvent.setup()
     const mockCreate = vi.fn().mockResolvedValue({ id: 3, name: 'New Recipe' })
-    
-    mockUseApi.mockImplementation((apiFunction) => {
-      if (apiFunction.name === 'list') {
-        return {
-          data: mockRecipes,
-          loading: false,
-          error: null,
-          execute: vi.fn().mockResolvedValue(mockRecipes),
-          reset: vi.fn(),
-        }
-      }
-      if (apiFunction.name === 'create') {
-        return {
-          data: null,
-          loading: false,
-          error: null,
-          execute: mockCreate,
-          reset: vi.fn(),
-        }
-      }
-      return {
-        data: null,
-        loading: false,
-        error: null,
-        execute: vi.fn(),
-        reset: vi.fn(),
-      }
-    })
+    returnsByApi.set(recipeApi.create, { ...blankReturn(), execute: mockCreate })
 
     render(<RecipeList />)
 
@@ -342,9 +284,8 @@ describe('RecipeList', () => {
 
     expect(screen.getByText('Showing 1 of 2 recipes')).toBeInTheDocument()
 
-    // Now filter by something that doesn't exist (simulate no matches)
-    // This would require mocking the filter logic more precisely
-    // For now, we'll test the UI elements are present
-    expect(screen.getByText('Filter by Type')).toBeInTheDocument()
+    // MUI outlined Select renders the label text twice (floating label +
+    // notched-outline legend); use getAllByText.
+    expect(screen.getAllByText('Filter by Type').length).toBeGreaterThan(0)
   })
 })
