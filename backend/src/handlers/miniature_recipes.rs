@@ -3,8 +3,7 @@ use crate::{
     error::{AppError, Result},
     repositories::{
         miniature_recipe_repository::MiniatureRecipeRepository,
-        miniature_repository::MiniatureRepository,
-        recipe_repository::RecipeRepository,
+        miniature_repository::MiniatureRepository, recipe_repository::RecipeRepository,
     },
 };
 use axum::{
@@ -22,9 +21,12 @@ pub async fn get_miniature_recipes(
     // Verify miniature exists
     MiniatureRepository::find_by_id(&database, miniature_id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("Miniature with id {} not found", miniature_id)))?;
+        .ok_or_else(|| {
+            AppError::NotFound(format!("Miniature with id {} not found", miniature_id))
+        })?;
 
-    let recipes = MiniatureRecipeRepository::find_recipes_for_miniature(&database, miniature_id).await?;
+    let recipes =
+        MiniatureRecipeRepository::find_recipes_for_miniature(&database, miniature_id).await?;
 
     Ok(Json(serde_json::json!({
         "recipes": recipes
@@ -39,7 +41,9 @@ pub async fn link_recipe_to_miniature(
     // Verify miniature exists
     MiniatureRepository::find_by_id(&database, miniature_id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("Miniature with id {} not found", miniature_id)))?;
+        .ok_or_else(|| {
+            AppError::NotFound(format!("Miniature with id {} not found", miniature_id))
+        })?;
 
     // Verify recipe exists
     RecipeRepository::find_by_id(&database, recipe_id)
@@ -78,7 +82,8 @@ pub async fn get_recipe_usage_count(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Recipe with id {} not found", recipe_id)))?;
 
-    let count = MiniatureRecipeRepository::count_miniatures_for_recipe(&database, recipe_id).await?;
+    let count =
+        MiniatureRecipeRepository::count_miniatures_for_recipe(&database, recipe_id).await?;
 
     Ok(Json(serde_json::json!({
         "recipe_id": recipe_id,
