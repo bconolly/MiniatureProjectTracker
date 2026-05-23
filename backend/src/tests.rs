@@ -27,9 +27,8 @@ mod property_tests {
 
         // Project should be valid iff all three fields are valid strings AND
         // game_system fits within the 50-char column width.
-        let is_valid_input = is_valid_string(&name)
-            && is_valid_string(&army)
-            && is_valid_game_system(&game_system);
+        let is_valid_input =
+            is_valid_string(&name) && is_valid_string(&army) && is_valid_game_system(&game_system);
         let is_valid_request = validate_project_creation(&request);
 
         TestResult::from_bool(is_valid_input == is_valid_request)
