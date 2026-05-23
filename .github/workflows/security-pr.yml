@@ -50,8 +50,9 @@ jobs:
       # sqlx-macros-core lists sqlx-mysql as an optional dep so it appears
       # in Cargo.lock regardless; cargo audit walks the lockfile, not the
       # resolved feature graph. Mirrored in backend/deny.toml.
+      # Run from workspace root: cargo audit reads ./Cargo.lock and doesn't
+      # walk up. The lockfile lives at the workspace root, not in backend/.
       run: |
-        cd backend
         echo "## Rust Security Audit" >> $GITHUB_STEP_SUMMARY
         if cargo audit --ignore RUSTSEC-2023-0071 --json > audit-results.json; then
           echo "✅ No known vulnerabilities found" >> $GITHUB_STEP_SUMMARY
