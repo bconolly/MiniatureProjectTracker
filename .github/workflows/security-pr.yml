@@ -42,6 +42,9 @@ jobs:
         cargo install cargo-audit --locked
         cargo install cargo-deny --locked
     
+    - name: Generate Cargo lockfile
+      run: cargo generate-lockfile
+
     - name: Run Rust security audit
       id: rust-audit
       # --ignore RUSTSEC-2023-0071: rsa Marvin attack — only reachable via
