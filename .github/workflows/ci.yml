@@ -57,7 +57,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
     
@@ -196,7 +196,12 @@ jobs:
         cargo install cargo-deny
     
     - name: Run Rust security audit
-      run: cd backend && cargo audit
+      # --ignore RUSTSEC-2023-0071: rsa Marvin attack — only reachable via
+      # sqlx-mysql, which we do NOT compile. See backend/deny.toml for the
+      # full justification.
+      # Run from workspace root: cargo audit reads ./Cargo.lock and doesn't
+      # walk up. The lockfile lives at the workspace root, not in backend/.
+      run: cargo audit --ignore RUSTSEC-2023-0071
     
     - name: Run cargo-deny (license and security checks)
       run: cd backend && cargo deny check
@@ -204,7 +209,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
     
