@@ -28,7 +28,7 @@ import ProjectForm from '../components/ProjectForm'
 import MiniatureForm from '../components/MiniatureForm'
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog'
 import type { Project, Miniature, UpdateProjectRequest, CreateMiniatureRequest, UpdateMiniatureRequest } from '../types'
-import { GAME_SYSTEM_LABELS, PROGRESS_STATUS_LABELS } from '../types'
+import { GAME_SYSTEM_LABELS, MINIATURE_TYPE_LABELS, PROGRESS_STATUS_LABELS } from '../types'
 
 function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -133,7 +133,8 @@ function ProjectDetail() {
     return new Date(dateString).toLocaleDateString()
   }
 
-  const getProgressColor = (status: string) => {
+  type ChipColor = 'success' | 'info' | 'warning' | 'secondary' | 'default'
+  const getProgressColor = (status: string): ChipColor => {
     switch (status) {
       case 'completed':
         return 'success'
@@ -335,15 +336,15 @@ function ProjectDetail() {
                   </Typography>
                   
                   <Box display="flex" gap={1} mb={2}>
-                    <Chip 
-                      label={miniature.miniature_type} 
+                    <Chip
+                      label={MINIATURE_TYPE_LABELS[miniature.miniature_type]}
                       size="small"
                       variant="outlined"
                     />
                     <Chip 
                       label={PROGRESS_STATUS_LABELS[miniature.progress_status]}
                       size="small"
-                      color={getProgressColor(miniature.progress_status) as any}
+                      color={getProgressColor(miniature.progress_status)}
                     />
                   </Box>
 

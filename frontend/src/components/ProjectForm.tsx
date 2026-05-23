@@ -47,7 +47,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     control,
     handleSubmit,
     reset,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
   } = useForm<FormData>({
     defaultValues: {
       name: project?.name || '',
@@ -214,12 +214,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         <Button onClick={handleClose} disabled={loading}>
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          variant="contained" 
-          disabled={loading || !isValid}
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={loading || isSubmitting || !isValid}
         >
-          {loading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
+          {loading || isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
         </Button>
       </DialogActions>
     </Dialog>

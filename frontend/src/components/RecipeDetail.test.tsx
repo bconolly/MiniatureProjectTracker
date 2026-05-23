@@ -204,7 +204,11 @@ describe('RecipeDetail', () => {
 
     renderRecipeDetail({ recipe: recipeWithSpecificDates })
 
-    expect(screen.getByText('Created: December 25, 2023')).toBeInTheDocument()
-    expect(screen.getByText('Last Updated: February 29, 2024')).toBeInTheDocument()
+    // The date sits in a separate text node from the static prefix, so
+    // match on the enclosing Typography's full textContent.
+    const fullText = (expected: string) => (_: string, el: Element | null) =>
+      el?.textContent === expected
+    expect(screen.getByText(fullText('Created: December 25, 2023'))).toBeInTheDocument()
+    expect(screen.getByText(fullText('Last Updated: February 29, 2024'))).toBeInTheDocument()
   })
 })

@@ -58,7 +58,7 @@ const MiniatureForm: React.FC<MiniatureFormProps> = ({
     control,
     handleSubmit,
     reset,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
   } = useForm<FormData>({
     defaultValues: {
       name: miniature?.name || '',
@@ -229,12 +229,12 @@ const MiniatureForm: React.FC<MiniatureFormProps> = ({
         <Button onClick={handleClose} disabled={loading}>
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          variant="contained" 
-          disabled={loading || !isValid}
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={loading || isSubmitting || !isValid}
         >
-          {loading ? 'Saving...' : (isEditing ? 'Update' : 'Add')}
+          {loading || isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Add')}
         </Button>
       </DialogActions>
     </Dialog>

@@ -109,7 +109,7 @@ export interface ErrorResponse {
   error: {
     error_type: string
     message: string
-    details?: any
+    details?: unknown
     timestamp: string
   }
 }

@@ -74,11 +74,22 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
     return ((currentStepIndex + 1) / steps.length) * 100
   }
 
-  const getStepColor = (stepIndex: number) => {
-    if (stepIndex < currentStepIndex) return 'success'
-    if (stepIndex === currentStepIndex) return 'primary'
-    return 'default'
+  // Chip accepts 'default'; LinearProgress accepts 'inherit'. The state
+  // (past / current / future) is shared, so derive both from one switch.
+  type StepState = 'past' | 'current' | 'future'
+  const getStepState = (stepIndex: number): StepState => {
+    if (stepIndex < currentStepIndex) return 'past'
+    if (stepIndex === currentStepIndex) return 'current'
+    return 'future'
   }
+  const chipColorFor = (
+    state: StepState
+  ): 'success' | 'primary' | 'default' =>
+    state === 'past' ? 'success' : state === 'current' ? 'primary' : 'default'
+  const progressColorFor = (
+    state: StepState
+  ): 'success' | 'primary' | 'inherit' =>
+    state === 'past' ? 'success' : state === 'current' ? 'primary' : 'inherit'
 
   const handleStepClick = (status: ProgressStatus) => {
     if (interactive && onStatusChange) {
@@ -93,16 +104,16 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           <Typography variant="body2" color="text.secondary">
             Progress
           </Typography>
-          <Chip 
+          <Chip
             label={PROGRESS_STATUS_LABELS[currentStatus]}
             size="small"
-            color={getStepColor(currentStepIndex) as any}
+            color={chipColorFor(getStepState(currentStepIndex))}
           />
         </Box>
-        <LinearProgress 
-          variant="determinate" 
-          value={getProgressValue()} 
-          color={getStepColor(currentStepIndex) as any}
+        <LinearProgress
+          variant="determinate"
+          value={getProgressValue()}
+          color={progressColorFor(getStepState(currentStepIndex))}
           sx={{ height: 8, borderRadius: 4 }}
         />
         {showLabels && (
@@ -132,7 +143,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           <LinearProgress 
             variant="determinate" 
             value={getProgressValue()} 
-            color={getStepColor(currentStepIndex) as any}
+            color={progressColorFor(getStepState(currentStepIndex))}
             sx={{ height: 4, borderRadius: 2 }}
           />
         </Box>
@@ -207,7 +218,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
           <LinearProgress 
             variant="determinate" 
             value={getProgressValue()} 
-            color={getStepColor(currentStepIndex) as any}
+            color={progressColorFor(getStepState(currentStepIndex))}
             sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
           />
           <Typography variant="body2" fontWeight="bold">

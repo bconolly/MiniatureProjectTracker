@@ -16,7 +16,7 @@ import {
   IconButton,
 } from '@mui/material'
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material'
-import { useForm, Controller, useFieldArray } from 'react-hook-form'
+import { useForm, Controller, useFieldArray, type FieldArrayWithId, type Path } from 'react-hook-form'
 import type { PaintingRecipe, CreateRecipeRequest, UpdateRecipeRequest, MiniatureType } from '../types'
 import { MiniatureType as MiniatureTypeEnum, MINIATURE_TYPE_LABELS } from '../types'
 
@@ -52,7 +52,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({
     control,
     handleSubmit,
     reset,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
   } = useForm<FormData>({
     defaultValues: {
       name: recipe?.name || '',
@@ -125,11 +125,12 @@ const RecipeForm: React.FC<RecipeFormProps> = ({
   }
 
   const renderArrayField = (
-    fields: any[],
+    fields: FieldArrayWithId<FormData, 'steps' | 'paints_used' | 'techniques', 'id'>[],
     name: 'steps' | 'paints_used' | 'techniques',
     label: string,
     append: (value: { value: string }) => void,
-    remove: (index: number) => void
+    remove: (index: number) => void,
+    requiredFirst: boolean = false
   ) => (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
@@ -138,10 +139,13 @@ const RecipeForm: React.FC<RecipeFormProps> = ({
       {fields.map((field, index) => (
         <Box key={field.id} display="flex" alignItems="center" gap={1} mb={1}>
           <Controller
-            name={`${name}.${index}.value` as any}
+            name={`${name}.${index}.value` as Path<FormData>}
             control={control}
             rules={{
-              required: index === 0 ? `At least one ${label.toLowerCase()} is required` : false,
+              required:
+                requiredFirst && index === 0
+                  ? `At least one ${label.toLowerCase()} is required`
+                  : false,
             }}
             render={({ field: inputField }) => (
               <TextField
@@ -250,7 +254,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({
             )}
           />
 
-          {renderArrayField(stepFields, 'steps', 'Steps', appendStep, removeStep)}
+          {renderArrayField(stepFields, 'steps', 'Steps', appendStep, removeStep, true)}
           {renderArrayField(paintFields, 'paints_used', 'Paints Used', appendPaint, removePaint)}
           {renderArrayField(techniqueFields, 'techniques', 'Techniques', appendTechnique, removeTechnique)}
 
@@ -283,12 +287,12 @@ const RecipeForm: React.FC<RecipeFormProps> = ({
         <Button onClick={handleClose} disabled={loading}>
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          variant="contained" 
-          disabled={loading || !isValid}
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={loading || isSubmitting || !isValid}
         >
-          {loading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
+          {loading || isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
         </Button>
       </DialogActions>
     </Dialog>

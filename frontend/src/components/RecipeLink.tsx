@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Box,
   Typography,
@@ -39,7 +39,7 @@ export default function RecipeLink({ miniatureId }: RecipeLinkProps) {
   const [removingRecipe, setRemovingRecipe] = useState<number | null>(null)
 
   // Load linked recipes
-  const fetchLinkedRecipes = async () => {
+  const fetchLinkedRecipes = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -51,22 +51,22 @@ export default function RecipeLink({ miniatureId }: RecipeLinkProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [miniatureId])
 
   // Load all recipes for the add dialog
-  const fetchAllRecipes = async () => {
+  const fetchAllRecipes = useCallback(async () => {
     try {
       const recipes = await recipeApi.list()
       setAllRecipes(recipes.data)
     } catch (err) {
       console.error('Failed to load recipes:', err)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchLinkedRecipes()
     fetchAllRecipes()
-  }, [miniatureId])
+  }, [fetchLinkedRecipes, fetchAllRecipes])
 
   const handleLinkRecipe = async (recipeId: number) => {
     try {
