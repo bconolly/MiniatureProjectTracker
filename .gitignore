@@ -30,6 +30,10 @@ yarn-error.log*
 *.swp
 *.swo
 
+# Xcode per-user state
+**/xcuserdata/
+*.xcuserstate
+
 # OS
 .DS_Store
 Thumbs.db
